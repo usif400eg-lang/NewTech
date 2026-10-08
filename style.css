@@ -1870,3 +1870,53 @@ html {
 }
 
 
+
+
+/* ==========================================================================
+   Official NewTech Logo Styles
+   ========================================================================== */
+.brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.25), 0 4px 15px rgba(0, 0, 0, 0.5);
+  margin-bottom: 0.35rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.brand-logo-wrap:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 35px rgba(255, 255, 255, 0.4), 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.brand-logo-img {
+  max-width: 190px;
+  max-height: 75px;
+  object-fit: contain;
+  display: block;
+}
+
+.app-logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.app-logo-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+.titlebar-logo-img {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
