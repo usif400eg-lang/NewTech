@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NewTech System | نظام المبيعات والحسابات والمقاصة المتكامل</title>
+  
+  <!-- Fonts: Cairo, Outfit & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- انبعاثات ضوئية خلفية نيون -->
+  <div class="ambient-glow-mesh ambient-glow-1"></div>
+  <div class="ambient-glow-mesh ambient-glow-2"></div>
+
+  <!-- ==========================================================================
+       0. Login & Register Screen Overlay (تسجيل الدخول وإنشاء الحساب)
+       ========================================================================== -->
+  <div class="login-screen-overlay" id="loginScreen">
+    <div class="login-card">
+      <div class="login-brand-header">
+        <div class="login-logo">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h2 class="login-title">NewTech System</h2>
+        <p class="login-subtitle">نظام المبيعات والمشتريات والمقاصة المركزية</p>
+      </div>
+
+      <!-- تبويبات التبديل بين الدخول وإنشاء الحساب -->
+      <div class="login-tabs-nav">
+        <button type="button" class="login-tab-btn active" id="tabLoginBtn">
+          <i class="fa-solid fa-right-to-bracket"></i> تسجيل الدخول
+        </button>
+        <button type="button" class="login-tab-btn" id="tabRegisterBtn">
+          <i class="fa-solid fa-user-plus"></i> إنشاء حساب جديد
+        </button>
+      </div>
+
+      <!-- نموذج تسجيل الدخول -->
+      <form id="loginForm" class="login-form" autocomplete="off" novalidate>
+        <div class="login-field">
+          <label for="loginUsernameInput">
+            <i class="fa-regular fa-user"></i> اسم المستخدم (Username):
+          </label>
+          <div class="login-input-wrap">
+            <input 
+              type="text" 
+              id="loginUsernameInput" 
+              class="login-input" 
+              placeholder="اكتب اسم المستخدم أو admin" 
+              required
+              autofocus
+            >
+            <i class="fa-solid fa-circle-user"></i>
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label for="loginPasswordInput">
+            <i class="fa-solid fa-key"></i> كلمة المرور (Password):
+          </label>
+          <div class="login-input-wrap">
+            <input 
+              type="password" 
+              id="loginPasswordInput" 
+              class="login-input" 
+              placeholder="اكتب كلمة المرور" 
+              required
+            >
+            <i class="fa-solid fa-lock"></i>
+          </div>
+        </div>
+
+        <div class="login-error-msg" id="loginErrorMsg">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="loginErrorText">اسم المستخدم أو كلمة المرور غير صحيحة!</span>
+        </div>
+
+        <button type="submit" class="btn-login-submit" id="loginSubmitBtn">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>دخول إلى السيستم</span>
+        </button>
+
+        <div class="login-hint-badge">
+          حساب الأدمن الافتراضي: اليوزر <strong>admin</strong> | الباسورد <strong>1</strong>
+        </div>
+      </form>
+
+      <!-- نموذج إنشاء حساب جديد -->
+      <form id="registerForm" class="login-form" autocomplete="off" style="display: none;" novalidate>
+        <div class="form-row form-row-2">
+          <div class="login-field">
+            <label for="regFullNameInput">
+              <i class="fa-solid fa-id-card"></i> الاسم الكامل / الفرع:
+            </label>
+            <div class="login-input-wrap">
+              <input type="text" id="regFullNameInput" class="login-input" placeholder="مثال: يوسف - فرع المول" required>
+            </div>
+          </div>
+
+          <div class="login-field">
+            <label for="regUsernameInput">
+              <i class="fa-regular fa-user"></i> اسم المستخدم (Username):
+            </label>
+            <div class="login-input-wrap">
+              <input type="text" id="regUsernameInput" class="login-input" placeholder="اسم المستخدم بالإنجليزية..." required>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row form-row-2">
+          <div class="login-field">
+            <label for="regPasswordInput">
+              <i class="fa-solid fa-key"></i> كلمة المرور:
+            </label>
+            <div class="login-input-wrap">
+              <input type="password" id="regPasswordInput" class="login-input" placeholder="اختر كلمة مرور قوية..." required>
+            </div>
+          </div>
+
+          <div class="login-field">
+            <label for="regConfirmPasswordInput">
+              <i class="fa-solid fa-lock"></i> تأكيد كلمة المرور:
+            </label>
+            <div class="login-input-wrap">
+              <input type="password" id="regConfirmPasswordInput" class="login-input" placeholder="أعد إدخال كلمة المرور..." required>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-error-msg" id="regErrorMsg">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="regErrorText">يرجى التأكد من تطابق كلمة المرور.</span>
+        </div>
+
+        <button type="submit" class="btn-login-submit" id="registerSubmitBtn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <i class="fa-solid fa-user-check"></i>
+          <span>إنشاء الحساب وبدء العمل</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       1. Window Titlebar
+       ========================================================================== -->
+  <header class="window-titlebar">
+    <div class="titlebar-left">
+      <div class="app-logo-badge">
+        <i class="fa-solid fa-bolt-lightning"></i>
+      </div>
+
+      <nav class="titlebar-menus">
+        <span class="titlebar-menu-item" id="menuAdd">مسحوب جديد</span>
+        <span class="titlebar-menu-item" id="menuNewPurchase">فاتورة مشتريات</span>
+        <span class="titlebar-menu-item" id="menuNetting">المقاصة والتصفية</span>
+        <span class="titlebar-menu-item" id="menuCompanies">الشركات والموردين</span>
+        <span class="titlebar-menu-item" id="menuStatement">كشف حساب</span>
+        <span class="titlebar-menu-item" id="menuDatabase">قاعدة البيانات</span>
+        <span class="titlebar-menu-item" id="menuBackup">نسخ احتياطي</span>
+      </nav>
+    </div>
+
+    <div class="titlebar-center">
+      <span>NewTech System</span>
+      <div class="db-status-pill" id="openDbModalBtn" title="انقر لفتح إدارة قاعدة البيانات والمزامنة">
+        <span class="db-pulse-dot"></span>
+        <span id="dbHeaderStatusText">قاعدة البيانات: PostgreSQL / SQLite متصلة</span>
+      </div>
+    </div>
+
+    <div class="titlebar-right">
+      <!-- شارة المستخدم الحالية وزر تسجيل الخروج -->
+      <div class="user-profile-badge" id="userProfileBadge">
+        <i class="fa-solid fa-user-shield"></i>
+        <span id="currentUserNameText">المشرف: admin</span>
+        <button class="btn-logout" id="logoutBtn" title="تسجيل الخروج من السيستم">
+          <i class="fa-solid fa-power-off"></i>
+        </button>
+      </div>
+
+      <!-- زر التحكم في المؤثرات الصوتية -->
+      <button class="sound-toggle-btn" id="soundToggleBtn" title="المؤثرات الصوتية التفاعلية">
+        <i class="fa-solid fa-volume-high"></i>
+      </button>
+
+      <div class="titlebar-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input 
+          type="text" 
+          id="titleSearchInput" 
+          placeholder="بحث سريع في السجل..." 
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="window-controls">
+        <span class="window-ctrl-btn" title="تصغير">&#8212;</span>
+        <span class="window-ctrl-btn" title="تكبير">&#9633;</span>
+        <span class="window-ctrl-btn" title="إغلاق">&times;</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       2. Action Ribbon Toolbar
+       ========================================================================== -->
+  <section class="ribbon-toolbar">
+    <!-- 1. إضافة صنف مسحوب -->
+    <button class="btn-ab-primary" id="openAddModalBtn">
+      <span class="btn-purple-badge">
+        <i class="fa-solid fa-plus"></i>
+      </span>
+      <span>+ صنف مسحوب جديد</span>
+    </button>
+
+    <!-- 2. فاتورة مشتريات جديدة -->
+    <button class="btn-ab-primary" id="openNewPurchaseModalBtn" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%); border-color: rgba(6, 182, 212, 0.4);">
+      <span class="btn-purple-badge" style="background: #06b6d4; color:#000;">
+        <i class="fa-solid fa-cart-shopping"></i>
+      </span>
+      <span>+ فاتورة مشتريات جديدة</span>
+    </button>
+
+    <!-- 3. سجل فواتير المشتريات -->
+    <button class="ribbon-btn" id="openPurchasesListBtn" title="عرض كافة فواتير المشتريات من الموردين">
+      <i class="fa-solid fa-boxes-packing" style="color:var(--ab-cyan);"></i>
+      <span>فواتير المشتريات</span>
+    </button>
+
+    <!-- 4. المقاصة والتصفية -->
+    <button class="ribbon-btn" id="openNettingModalBtn" title="خاصية التصفية والمقاصة التلقائية بين الحسابات">
+      <i class="fa-solid fa-scale-unbalanced-flip" style="color:var(--ab-accent);"></i>
+      <span>المقاصة وتصفية الحسابات</span>
+    </button>
+
+    <div class="ribbon-separator"></div>
+
+    <button class="ribbon-btn" id="openCompaniesModalBtn" title="إدارة شركات المول والموردين">
+      <i class="fa-solid fa-building-user"></i>
+      <span>الشركات والموردين</span>
+    </button>
+
+    <button class="ribbon-btn" id="openAccountStatementBtn" title="كشف حساب تفصيلي والمقاصة للشركة">
+      <i class="fa-solid fa-file-invoice-dollar"></i>
+      <span>كشف حساب</span>
+    </button>
+
+    <button class="ribbon-btn" id="exportExcelBtn" title="تصدير كشف إكسيل UTF-8">
+      <i class="fa-solid fa-file-excel"></i>
+      <span>تصدير إكسيل</span>
+    </button>
+
+    <div class="ribbon-separator"></div>
+
+    <!-- فلاتر الحالات -->
+    <button class="ribbon-btn" id="btnFilterUnpaid" title="المسحوبات غير المسددة فقط (الآجل)">
+      <i class="fa-solid fa-hourglass-half" style="color:var(--ab-unpaid);"></i>
+      <span>غير مدفوع (آجل)</span>
+    </button>
+
+    <button class="ribbon-btn" id="btnFilterPaid" title="المسحوبات المسددة فقط">
+      <i class="fa-solid fa-circle-check" style="color:var(--ab-paid);"></i>
+      <span>تم الدفع</span>
+    </button>
+
+    <button class="ribbon-btn" id="btnFilterReturned" title="المرتجعات المسجلة">
+      <i class="fa-solid fa-rotate-left" style="color:var(--ab-returned);"></i>
+      <span>المرتجعات</span>
+    </button>
+
+    <button class="ribbon-btn" id="ribbonDbBtn" title="التحكم في قاعدة البيانات وسيرفر PostgreSQL/SQLite">
+      <i class="fa-solid fa-database" style="color:var(--ab-accent);"></i>
+      <span>PostgreSQL / SQLite</span>
+    </button>
+
+    <div class="ribbon-separator"></div>
+
+    <button class="ribbon-btn ribbon-btn-danger" id="ribbonClearAllBtn" title="تصفير وتفريغ كل الأصناف للبدء على نظيف">
+      <i class="fa-solid fa-trash-can" style="color:var(--ab-unpaid);"></i>
+      <span>تفريغ السجل</span>
+    </button>
+  </section>
+
+  <!-- ==========================================================================
+       3. Main App Workspace
+       ========================================================================== -->
+  <div class="app-workspace">
+    
+    <!-- الشريط الجانبي -->
+    <aside class="ab-sidebar">
+      <div class="sidebar-category-header">
+        <span>أقسام وسجلات النظام</span>
+        <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;"></i>
+      </div>
+
+      <ul class="sidebar-nav-list">
+        <li class="sidebar-nav-item active" data-category="ALL" id="sideNavAll">
+          <div class="sidebar-item-label">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>جميع المسحوبات</span>
+          </div>
+          <span class="sidebar-badge" id="sideBadgeAll">0</span>
+        </li>
+
+        <li class="sidebar-nav-item" data-category="UNPAID" id="sideNavUnpaid">
+          <div class="sidebar-item-label">
+            <i class="fa-solid fa-clock" style="color:var(--ab-unpaid);"></i>
+            <span>غير مدفوع (آجل ⏳)</span>
+          </div>
+          <span class="sidebar-badge" style="color:var(--ab-unpaid);" id="sideBadgeUnpaid">0</span>
+        </li>
+
+        <li class="sidebar-nav-item" data-category="PAID" id="sideNavPaid">
+          <div class="sidebar-item-label">
+            <i class="fa-solid fa-circle-check" style="color:var(--ab-paid);"></i>
+            <span>تم الدفع بنجاح ✅</span>
+          </div>
+          <span class="sidebar-badge" style="color:var(--ab-paid);" id="sideBadgePaid">0</span>
+        </li>
+
+        <li class="sidebar-nav-item" data-category="RETURNED" id="sideNavReturned">
+          <div class="sidebar-item-label">
+            <i class="fa-solid fa-rotate-left" style="color:var(--ab-returned);"></i>
+            <span>المرتجعات (أصفر ↩)</span>
+          </div>
+          <span class="sidebar-badge" style="color:var(--ab-returned);" id="sideBadgeReturned">0</span>
+        </li>
+      </ul>
+
+      <!-- فواتير المشتريات في الشريط الجانبي -->
+      <div class="sidebar-category-header" style="margin-top:0.75rem;">
+        <span>فواتير المشتريات والموردين</span>
+        <span class="sidebar-badge" id="sidePurchasesCount">0</span>
+      </div>
+
+      <ul class="sidebar-nav-list">
+        <li class="sidebar-nav-item" id="sideNavOpenPurchases">
+          <div class="sidebar-item-label">
+            <i class="fa-solid fa-file-invoice" style="color:var(--ab-cyan);"></i>
+            <span>عرض فواتير المشتريات</span>
+          </div>
+        </li>
+        <li class="sidebar-nav-item" id="sideNavOpenNetting">
+          <div class="sidebar-item-label">
+            <i class="fa-solid fa-scale-balanced" style="color:var(--ab-accent);"></i>
+            <span>شاشة المقاصة المباشرة</span>
+          </div>
+        </li>
+      </ul>
+
+      <!-- شركات المول والموردين -->
+      <div class="sidebar-category-header" style="margin-top:0.75rem;">
+        <span>الشركات والموردين</span>
+        <span class="sidebar-badge" id="sideCompaniesCount">31</span>
+      </div>
+
+      <div class="companies-sidebar-search">
+        <input type="text" id="sideCompanySearchInput" placeholder="بحث سريع في الشركات والموردين...">
+      </div>
+
+      <div class="companies-nav-scroll">
+        <ul class="sidebar-nav-list" id="sidebarCompaniesList"></ul>
+      </div>
+    </aside>
+
+    <!-- مساحة العرض الرئيسية (الجدول المحاسبي الصارم) -->
+    <main class="ab-main-area">
+      
+      <!-- شريط المؤشرات المالية العلوية -->
+      <div class="ab-metrics-bar">
+        <div style="display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap;">
+          <div class="metric-pill">
+            <span class="metric-title">المتبقي المطلوب تحصيله (عجز):</span>
+            <span class="metric-val unpaid" id="statUnpaidAmount">0.00 ج.م</span>
+          </div>
+
+          <div class="metric-pill">
+            <span class="metric-title">المسدد والمدفوع:</span>
+            <span class="metric-val paid" id="statPaidAmount">0.00 ج.م</span>
+          </div>
+
+          <div class="metric-pill">
+            <span class="metric-title">المرتجعات (أصفر):</span>
+            <span class="metric-val" style="color:var(--ab-returned);" id="statReturnedAmount">0.00 ج.م</span>
+          </div>
+
+          <div class="metric-pill">
+            <span class="metric-title">إجمالي قيمة كل المسحوبات:</span>
+            <span class="metric-val total" id="statTotalAmount">0.00 ج.م</span>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <select id="dateFilterSelect" class="form-control" style="width:130px; padding:0.25rem 0.5rem; font-size:0.75rem;">
+            <option value="ALL">كل التواريخ</option>
+            <option value="TODAY">اليوم فقط</option>
+            <option value="YESTERDAY">أمس</option>
+            <option value="THIS_WEEK">هذا الأسبوع</option>
+            <option value="THIS_MONTH">هذا الشهر</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- بانر الشركة المحددة مع رصيد المقاصة السريع -->
+      <div class="active-company-banner" id="activeCompanyBanner" style="display: none;">
+        <div>
+          <strong id="activeCompanyTitle">ملف حساب</strong>
+          <span style="color:var(--ab-text-muted); margin-right:0.5rem;" id="activeCompanyDesc"></span>
+          <span id="activeCompanyNettingBadge" style="margin-right:0.6rem;"></span>
+        </div>
+        <div style="display:flex; gap:0.4rem;">
+          <button class="btn-dialog-primary" id="openCompanyQuickStatementBtn" style="padding:0.2rem 0.6rem; font-size:0.75rem;">
+            فتح كشف الحساب
+          </button>
+          <button class="btn-dialog-secondary" id="resetCompanyFilterBtn" style="padding:0.2rem 0.6rem; font-size:0.75rem;">
+            إلغاء التحديد (عرض الكل)
+          </button>
+        </div>
+      </div>
+
+      <!-- نظام الجداول الصارم -->
+      <div class="table-grid-wrapper">
+        <table class="ab-desktop-table" id="mainDataTable">
+          <thead>
+            <tr>
+              <th style="width: 36px; text-align:center;"><input type="checkbox" id="selectAllCheckbox"></th>
+              <th style="width: 105px;">كود الصنف</th>
+              <th style="min-width: 170px;">اسم الصنف</th>
+              <th style="min-width: 140px;">اسم الشركة / المورد</th>
+              <th style="min-width: 120px;">الشخص المستلم</th>
+              <th style="width: 65px; text-align:center;">الكمية</th>
+              <th style="width: 90px;">سعر القطعة</th>
+              <th style="width: 110px;">السعر الإجمالي</th>
+              <th style="width: 155px;">اليوم والتاريخ والساعة</th>
+              <th style="width: 185px; text-align:center;">حالة السداد والمرتجع</th>
+              <th style="width: 75px; text-align:center;">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="tableRowsBody">
+            <!-- يتم تعبئة صفوف الجدول بدقة -->
+          </tbody>
+        </table>
+
+        <!-- حالة القائمة فارغة -->
+        <div class="ab-empty-state" id="emptyState" style="display: none;">
+          <div class="empty-state-halo">
+            <i class="fa-solid fa-folder-open"></i>
+          </div>
+          <div class="empty-state-title">السجل فارغ تماماً - جاهز للبدء على نظيف</div>
+          <p class="empty-state-desc">النظام مهيأ ومؤمّن بقاعدة بيانات PostgreSQL و SQLite المركزية، وشركات المول والموردين جاهزة بالكامل. يمكنك البدء بتسجيل مسحوب أو فاتورة شراء فوراً.</p>
+          <div style="display:flex; gap:0.75rem; margin-top:0.5rem;">
+            <button class="btn-ab-primary empty-add-btn" id="emptyStateAddBtn">
+              <span class="btn-purple-badge"><i class="fa-solid fa-plus"></i></span>
+              <span>+ تسجيل صنف مسحوب الآن</span>
+            </button>
+            <button class="btn-ab-primary empty-add-btn" id="emptyStatePurchaseBtn" style="background: rgba(6, 182, 212, 0.2); border-color: rgba(6, 182, 212, 0.4);">
+              <span class="btn-purple-badge" style="background:#06b6d4; color:#000;"><i class="fa-solid fa-cart-shopping"></i></span>
+              <span>+ فاتورة مشتريات جديدة</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- شريط الحالة السفلي -->
+      <footer class="ab-statusbar">
+        <div class="statusbar-left">
+          <span id="statusItemCount">عدد العناصر: 0</span>
+          <span>|</span>
+          <span id="statusDebtSummary">المتبقي المطلوب تحصيله (عجز): 0.00 ج.م</span>
+          <span>|</span>
+          <span id="statusPurchasesSummary">المشتريات: 0.00 ج.م</span>
+        </div>
+        <div class="statusbar-right">
+          <span id="statusDbEngineTag">المحرك: PostgreSQL + SQLite Dual Hub</span>
+          <span>|</span>
+          <span id="statusLiveTime">--:--:--</span>
+        </div>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 1: تسجيل / تعديل مسحوب                                 -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="addItemModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-cart-plus" style="color:var(--ab-accent);"></i> <span id="addItemModalTitle">تسجيل صنف مسحوب جديد</span></h3>
+        <button class="modal-close-btn" data-close-modal="addItemModal">&times;</button>
+      </div>
+
+      <form id="addItemForm" autocomplete="off">
+        <input type="hidden" id="editItemId" value="">
+
+        <div class="modal-body">
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label for="itemCompanySelect">اسم الشركة أو المورد المسحوب له:</label>
+              <div class="input-with-btn">
+                <select id="itemCompanySelect" class="form-control" required>
+                  <option value="" disabled selected>-- اختر من قائمة الشركات والموردين --</option>
+                </select>
+                <button type="button" class="btn-dialog-secondary" id="quickAddCompanyBtn" title="إضافة شركة أو مورد جديد">+</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="itemPersonInput">اسم الشخص المستلم:</label>
+              <input 
+                type="text" 
+                id="itemPersonInput" 
+                class="form-control" 
+                placeholder="اسم الشخص المستلم..." 
+                required
+                list="personsDatalist"
+              >
+              <datalist id="personsDatalist"></datalist>
+            </div>
+          </div>
+
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label for="itemNameInput">اسم الصنف:</label>
+              <input 
+                type="text" 
+                id="itemNameInput" 
+                class="form-control" 
+                placeholder="مثال: شاحن لابتوب Dell 65W أصلي..." 
+                required
+                list="itemsDatalist"
+              >
+              <datalist id="itemsDatalist"></datalist>
+            </div>
+
+            <div class="form-group">
+              <label for="itemCodeInput">كود الصنف:</label>
+              <div class="input-with-btn">
+                <input 
+                  type="text" 
+                  id="itemCodeInput" 
+                  class="form-control text-ltr" 
+                  placeholder="NT-101" 
+                  required
+                >
+                <button type="button" class="btn-dialog-secondary" id="generateCodeBtn" title="توليد كود عشوائي">توليد</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label for="itemUnitPriceInput">سعر القطعة (ج.م):</label>
+              <input 
+                type="number" 
+                id="itemUnitPriceInput" 
+                class="form-control" 
+                placeholder="0.00" 
+                min="0" 
+                step="0.5" 
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="itemQuantityInput">الكمية:</label>
+              <input 
+                type="number" 
+                id="itemQuantityInput" 
+                class="form-control" 
+                value="1" 
+                min="1" 
+                step="1" 
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="itemTotalPriceInput">السعر الإجمالي (ج.م):</label>
+              <input 
+                type="number" 
+                id="itemTotalPriceInput" 
+                class="form-control" 
+                placeholder="0.00" 
+                min="0" 
+                step="0.5" 
+                required
+                style="font-family:var(--font-latin); font-weight:800; color:var(--ab-accent);"
+              >
+            </div>
+          </div>
+
+          <div class="form-row form-row-2">
+            <div class="form-group">
+              <label>التاريخ والوقت (مسجل تلقائياً):</label>
+              <div class="form-control" style="color:var(--ab-text-muted);" id="itemDateTimeText">--</div>
+              <input type="hidden" id="itemTimestampInput" value="">
+            </div>
+
+            <div class="form-group">
+              <label>حالة السداد الفورية:</label>
+              <div style="display:flex; gap:1.2rem; margin-top:0.35rem; flex-wrap:wrap;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                  <input type="radio" name="paymentStatus" id="statusUnpaidRadio" value="UNPAID" checked>
+                  <strong style="color:var(--ab-unpaid);">آجل (غير مدفوع)</strong>
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                  <input type="radio" name="paymentStatus" id="statusPaidRadio" value="PAID">
+                  <strong style="color:var(--ab-paid);">تم الدفع كاش</strong>
+                </label>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                  <input type="radio" name="paymentStatus" id="statusReturnedRadio" value="RETURNED">
+                  <strong style="color:var(--ab-returned);">مرتجع (أصفر)</strong>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="itemNotesInput">ملاحظات (اختياري):</label>
+            <input type="text" id="itemNotesInput" class="form-control" placeholder="أي تفاصيل أو ملاحظات إضافية...">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-dialog-secondary" data-close-modal="addItemModal">إلغاء</button>
+          <button type="submit" class="btn-dialog-primary" id="saveItemSubmitBtn">حفظ الصنف في قاعدة البيانات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 2: إنشاء فاتورة مشتريات جديدة من شركة أو مورد           -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="newPurchaseModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3>
+          <i class="fa-solid fa-cart-shopping" style="color:var(--ab-cyan);"></i> 
+          <span>فاتورة مشتريات جديدة من شركة / مورد</span>
+        </h3>
+        <button class="modal-close-btn" data-close-modal="newPurchaseModal">&times;</button>
+      </div>
+
+      <form id="newPurchaseForm" autocomplete="off">
+        <div class="modal-body">
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label for="purchaseSupplierSelect">اسم الشركة أو المورد (البائع):</label>
+              <select id="purchaseSupplierSelect" class="form-control" required>
+                <option value="" disabled selected>-- اختر المورد / الشركة --</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="purchaseInvoiceNumInput">رقم الفاتورة:</label>
+              <input type="text" id="purchaseInvoiceNumInput" class="form-control text-ltr" placeholder="PUR-1001" required>
+            </div>
+
+            <div class="form-group">
+              <label for="purchaseDateInput">تاريخ الفاتورة:</label>
+              <input type="date" id="purchaseDateInput" class="form-control" required>
+            </div>
+          </div>
+
+          <!-- جدول البنود غير المحدودة داخل الفاتورة -->
+          <div style="margin-top:0.75rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="font-size:0.88rem; color:var(--ab-text-main);">
+                <i class="fa-solid fa-list-check" style="color:var(--ab-cyan);"></i> بنود الفاتورة (أصناف غير محدودة):
+              </strong>
+              <button type="button" class="btn-dialog-primary" id="addInvoiceRowBtn" style="font-size:0.75rem; padding:0.3rem 0.75rem;">
+                <i class="fa-solid fa-plus"></i> إضافة صنف للفاتورة
+              </button>
+            </div>
+
+            <div style="overflow-x:auto;">
+              <table class="invoice-items-table" id="purchaseItemsTable">
+                <thead>
+                  <tr>
+                    <th style="min-width:200px;">اسم الصنف</th>
+                    <th style="width:110px;">كود الصنف</th>
+                    <th style="width:90px; text-align:center;">الكمية</th>
+                    <th style="width:110px;">سعر الوحدة (ج.م)</th>
+                    <th style="width:100px;">الخصم (ج.م)</th>
+                    <th style="width:120px;">السعر النهائي</th>
+                    <th style="width:50px; text-align:center;">حذف</th>
+                  </tr>
+                </thead>
+                <tbody id="purchaseItemsTableBody">
+                  <!-- بنود الفاتورة الديناميكية -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- شريط إجماليات الفاتورة والدفع -->
+          <div class="invoice-totals-bar">
+            <div class="invoice-stat-box">
+              <span>إجمالي الأصناف:</span>
+              <strong id="purchaseSubtotalText">0.00 ج.م</strong>
+            </div>
+            <div class="invoice-stat-box">
+              <span>إجمالي الخصم:</span>
+              <strong id="purchaseDiscountText" style="color:var(--ab-cyan);">0.00 ج.م</strong>
+            </div>
+            <div class="invoice-stat-box">
+              <span>صافي الفاتورة الكلي:</span>
+              <strong id="purchaseGrandTotalText" style="color:#fff; font-size:1.15rem;">0.00 ج.م</strong>
+            </div>
+            <div class="invoice-stat-box">
+              <label style="font-size:0.72rem; color:var(--ab-text-muted); margin-bottom:0.2rem;" for="purchasePaidInput">المبلغ المدفوع (مسدد):</label>
+              <input type="number" id="purchasePaidInput" class="form-control" style="font-size:0.88rem; padding:0.25rem 0.5rem; font-family:var(--font-latin);" value="0" min="0" step="0.5">
+            </div>
+            <div class="invoice-stat-box">
+              <span>المتبقي للمورد (عليّ لهم):</span>
+              <strong id="purchaseRemainingText" style="color:var(--ab-paid);">0.00 ج.م</strong>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:0.75rem;">
+            <label for="purchaseNotesInput">ملاحظات الفاتورة:</label>
+            <input type="text" id="purchaseNotesInput" class="form-control" placeholder="أي ملاحظات حول التوريد أو الدفع...">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-dialog-secondary" data-close-modal="newPurchaseModal">إلغاء</button>
+          <button type="submit" class="btn-dialog-primary" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+            <i class="fa-solid fa-floppy-disk"></i> حفظ الفاتورة وتحديث حساب المورد والمقاصة
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 3: سجل فواتير المشتريات من الشركات والموردين            -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="purchasesListModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3>
+          <i class="fa-solid fa-boxes-packing" style="color:var(--ab-cyan);"></i> 
+          <span>سجل فواتير المشتريات من الموردين والشركات</span>
+        </h3>
+        <button class="modal-close-btn" data-close-modal="purchasesListModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; gap:0.5rem; flex-wrap:wrap;">
+          <input type="text" id="searchPurchasesInput" class="form-control" style="max-width:280px;" placeholder="بحث برقم الفاتورة أو المورد...">
+          <button class="btn-dialog-primary" id="openNewPurchaseFromListBtn" style="font-size:0.8rem;">
+            <i class="fa-solid fa-plus"></i> + إنشاء فاتورة شراء جديدة
+          </button>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="ab-desktop-table" style="width:100%;" id="purchasesGridTable">
+            <thead>
+              <tr>
+                <th style="width:110px;">رقم الفاتورة</th>
+                <th>اسم المورد / الشركة</th>
+                <th style="width:110px;">التاريخ</th>
+                <th style="width:100px;">إجمالي الفاتورة</th>
+                <th style="width:100px;">المسدد</th>
+                <th style="width:100px;">المتبقي</th>
+                <th style="width:140px; text-align:center;">حالة الفاتورة</th>
+                <th style="width:110px; text-align:center;">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="purchasesListTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="purchasesListModal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 4: خاصية التصفية والمقاصة بين الحسابات (Clearing Matrix) -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="nettingModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3>
+          <i class="fa-solid fa-scale-unbalanced-flip" style="color:var(--ab-accent);"></i> 
+          <span>شاشة التصفية والمقاصة التلقائية بين الحسابات (Mutual Settlement)</span>
+        </h3>
+        <button class="modal-close-btn" data-close-modal="nettingModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- كروت الإجماليات الثلاثة -->
+        <div class="netting-grid">
+          <div class="netting-summary-card due-from-them">
+            <div style="font-size:0.82rem; color:var(--ab-text-muted);">إجمالي ما لي عند الشركات (مسحوبات مطلوب تحصيلها):</div>
+            <strong id="nettingTotalDueFromText" style="font-size:1.4rem; color:var(--ab-unpaid); display:block; margin-top:0.4rem; font-family:var(--font-latin);">0.00 ج.م</strong>
+            <small style="color:var(--ab-text-dim);">مسحوبات آجلة لم تُسدد بعد</small>
+          </div>
+
+          <div class="netting-summary-card due-to-them">
+            <div style="font-size:0.82rem; color:var(--ab-text-muted);">إجمالي ما عليّ للموردين (فواتير مشتريات مستحقة الدفع):</div>
+            <strong id="nettingTotalDueToText" style="font-size:1.4rem; color:var(--ab-paid); display:block; margin-top:0.4rem; font-family:var(--font-latin);">0.00 ج.م</strong>
+            <small style="color:var(--ab-text-dim);">مشتريات آجلة لم تُدفع بعد</small>
+          </div>
+
+          <div class="netting-summary-card net-total">
+            <div style="font-size:0.82rem; color:var(--ab-text-muted);">الصافي العام بعد المقاصة الشاملة:</div>
+            <strong id="nettingGrandBalanceText" style="font-size:1.4rem; color:var(--ab-accent); display:block; margin-top:0.4rem; font-family:var(--font-latin);">0.00 ج.م</strong>
+            <small id="nettingGrandStatusHint" style="color:var(--ab-text-muted);">المقاصة التلقائية بين الحسابين</small>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+          <input type="text" id="nettingSearchInput" class="form-control" style="max-width:280px;" placeholder="بحث في حسابات المقاصة...">
+          <div style="font-size:0.8rem; display:flex; gap:0.75rem;">
+            <span><i class="fa-solid fa-circle" style="color:#ff3366;"></i> أحمر: لي عند الشركة</span>
+            <span><i class="fa-solid fa-circle" style="color:#10b981;"></i> أخضر: عليّ للشركة</span>
+          </div>
+        </div>
+
+        <!-- جدول المقاصة المفصل لجميع الشركات -->
+        <div style="overflow-x:auto;">
+          <table class="ab-desktop-table" style="width:100%;" id="nettingMatrixTable">
+            <thead>
+              <tr>
+                <th>اسم الشركة / المورد</th>
+                <th style="width:100px;">نوع الكيان</th>
+                <th style="width:130px;">المبلغ الذي لي عندهم (مسحوبات)</th>
+                <th style="width:130px;">المبلغ الذي عليّ لهم (مشتريات)</th>
+                <th style="width:160px; text-align:center;">المبلغ النهائي بعد المقاصة</th>
+                <th style="width:110px; text-align:center;">كشف حساب</th>
+              </tr>
+            </thead>
+            <tbody id="nettingTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="nettingModal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 5: إدارة قاعدة البيانات (PostgreSQL & SQLite)             -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="dbModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-database" style="color:var(--ab-accent);"></i> إدارة قاعدة البيانات المركزية (PostgreSQL + SQLite)</h3>
+        <button class="modal-close-btn" data-close-modal="dbModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="db-info-grid">
+          <div class="db-stat-box">
+            <span>القاعدة الرئيسية (Central):</span>
+            <strong style="color:var(--ab-cyan);">PostgreSQL 15+ / Cloud Hub</strong>
+          </div>
+          <div class="db-stat-box">
+            <span>القاعدة المحلية (Offline):</span>
+            <strong style="color:var(--ab-paid);">SQLite3 + IndexedDB ACID</strong>
+          </div>
+          <div class="db-stat-box">
+            <span>المسحوبات والمشتريات:</span>
+            <strong id="dbModalTransCount">0 معاملة وفاتورة</strong>
+          </div>
+          <div class="db-stat-box">
+            <span>الحساب الحالي المتصل:</span>
+            <strong id="dbModalCurrentUser">admin</strong>
+          </div>
+        </div>
+
+        <!-- إعدادات المزامنة السحابية المركزية لـ PostgreSQL (Supabase / REST / Neon) -->
+        <div style="background:var(--ab-bg-toolbar); padding:0.85rem; border:1px solid var(--ab-border); border-radius:var(--radius-xs); margin-top:0.75rem;">
+          <div style="font-weight:700; margin-bottom:0.5rem; font-size:0.85rem; color:var(--ab-text-main);">
+            <i class="fa-solid fa-cloud" style="color:var(--ab-accent);"></i> الربط بالسيرفر السحابي المركزي (PostgreSQL / Supabase Sync):
+          </div>
+          <p style="font-size:0.75rem; color:var(--ab-text-muted); margin-bottom:0.5rem;">
+            لضمان ظهور نفس البيانات على جميع أجهزتك وهواتفك بعد تسجيل الدخول، يمكنك ربط قاعدة بيانات PostgreSQL السحابية (مثل Supabase المجانية):
+          </p>
+          <div class="form-row form-row-2">
+            <input type="text" id="pgEndpointInput" class="form-control text-ltr" placeholder="https://your-project.supabase.co">
+            <input type="password" id="pgApiKeyInput" class="form-control text-ltr" placeholder="PostgreSQL / Supabase Anon API Key">
+          </div>
+          <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+            <button type="button" class="btn-dialog-primary" id="saveCloudSyncBtn" style="font-size:0.78rem;">
+              <i class="fa-solid fa-arrows-rotate"></i> حفظ والمزامنة الآن مع PostgreSQL
+            </button>
+            <span id="cloudSyncStatusText" style="font-size:0.78rem; display:flex; align-items:center; color:var(--ab-text-muted);">
+              الوضع الحالي: تخزين محلي SQLite / IndexedDB
+            </span>
+          </div>
+        </div>
+
+        <!-- تصدير واستيراد قواعد البيانات -->
+        <div style="display:flex; gap:0.65rem; flex-wrap:wrap; margin-top:0.75rem;">
+          <button class="btn-dialog-primary" id="downloadPostgresDumpBtn" style="background:linear-gradient(135deg, #0284c7, #0369a1); border-color:#0284c7;">
+            <i class="fa-solid fa-file-code"></i> تصدير سكريبت PostgreSQL (.sql)
+          </button>
+          <button class="btn-dialog-primary" id="downloadSqliteDumpBtn" style="background:linear-gradient(135deg, #059669, #047857); border-color:#059669;">
+            <i class="fa-solid fa-file-shield"></i> تصدير سكريبت SQLite (.sql)
+          </button>
+          <button class="btn-dialog-secondary" id="downloadJsonBackupBtn">
+            <i class="fa-solid fa-download"></i> تصدير نسخة JSON
+          </button>
+          <label class="btn-dialog-secondary" style="cursor:pointer;">
+            <i class="fa-solid fa-upload"></i> استعادة نسخة سابقة
+            <input type="file" id="restoreDbFileInput" accept=".json" style="display:none;">
+          </label>
+        </div>
+
+        <div style="margin-top:0.75rem;">
+          <div style="font-size:0.85rem; font-weight:700; color:var(--ab-text-main); margin-bottom:0.4rem;">
+            سجل العمليات والتدقيق المالي (Audit Log - حماية ومنع التلاعب):
+          </div>
+          <div class="audit-log-list" id="auditLogContainer"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="dbModal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 6: إدارة الشركات والموردين                              -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="companiesModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-city" style="color:var(--ab-accent);"></i> إدارة شركات المول والموردين</h3>
+        <button class="modal-close-btn" data-close-modal="companiesModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <form id="addNewCompanyForm" style="background:var(--ab-bg-toolbar); padding:0.85rem; border:1px solid var(--ab-border); border-radius:var(--radius-xs);">
+          <div style="font-weight:700; margin-bottom:0.5rem; font-size:0.85rem; color:var(--ab-text-main);">+ إضافة شركة أو مورد جديد:</div>
+          <div class="form-row form-row-4">
+            <input type="text" id="newCompanyNameInput" class="form-control text-ltr" placeholder="اسم الشركة بالإنجليزي..." required>
+            <input type="text" id="newCompanyArNameInput" class="form-control" placeholder="الاسم العربي..." required>
+            <select id="newCompanyTypeSelect" class="form-control" required>
+              <option value="both" selected>شركة ومورد (مقاصة ثنائية)</option>
+              <option value="company">شركة مسحوبات فقط</option>
+              <option value="supplier">مورد بضائع ومشتريات فقط</option>
+            </select>
+            <input type="text" id="newCompanyPersonInput" class="form-control" placeholder="اسم الشخص المسؤول...">
+          </div>
+          <button type="submit" class="btn-dialog-primary" style="margin-top:0.6rem; font-size:0.8rem;">حفظ في قاعدة البيانات</button>
+        </form>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.35rem;">
+          <input type="text" id="companiesSearchInput" class="form-control" style="max-width:280px;" placeholder="بحث في الشركات والموردين...">
+          <span style="font-size:0.8rem; color:var(--ab-text-muted);" id="modalCompaniesCount">31 شركة</span>
+        </div>
+
+        <div class="companies-simple-list" id="companiesManageGrid"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="companiesModal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 7: كشف حساب تفصيلي والمقاصة للشركة للطباعة             -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="statementModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-file-invoice" style="color:var(--ab-accent);"></i> كشف حساب تفصيلي ومقاصة شاملة</h3>
+        <button class="modal-close-btn" data-close-modal="statementModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display:flex; gap:0.75rem; align-items:center;">
+          <select id="statementCompanySelect" class="form-control" style="flex:1;"></select>
+          <button class="btn-dialog-primary" id="printStatementActionBtn"><i class="fa-solid fa-print"></i> طباعة كشف الحساب</button>
+        </div>
+
+        <div class="statement-sheet" id="printableStatementSheet" style="background:var(--ab-bg-toolbar); border:1px solid var(--ab-border); padding:1.25rem; border-radius:var(--radius-xs); margin-top:0.75rem;">
+          <div class="sheet-head">
+            <div>
+              <h2 style="font-size:1.3rem; color:var(--ab-accent);">NewTech System</h2>
+              <div style="font-size:0.82rem; color:var(--ab-text-muted);">كشف حساب ومقاصة شاملة</div>
+            </div>
+            <div style="text-align:left;">
+              <div id="statementTargetCompany" style="font-weight:800; font-size:1.05rem;">الشركة: ...</div>
+              <div id="statementPrintDate" style="font-size:0.75rem; color:var(--ab-text-muted);">التاريخ: --</div>
+            </div>
+          </div>
+
+          <!-- بطاقات المقاصة الثلاث لكشف الحساب -->
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; background:var(--ab-bg-input); padding:0.75rem; border:1px solid var(--ab-border); margin:1rem 0;">
+            <div>المسحوبات (لي عندهم): <strong id="stmtDueFromVal" style="display:block; font-size:1.15rem; font-family:var(--font-latin); color:var(--ab-unpaid);">0.00 ج.م</strong></div>
+            <div>المشتريات (عليّ لهم): <strong id="stmtDueToVal" style="display:block; font-size:1.15rem; font-family:var(--font-latin); color:var(--ab-paid);">0.00 ج.م</strong></div>
+            <div>الصافي النهائي بعد المقاصة: <strong id="stmtNetBalanceVal" style="display:block; font-size:1.2rem; font-family:var(--font-latin);">0.00 ج.م</strong></div>
+          </div>
+
+          <div style="font-weight:700; margin-bottom:0.35rem; font-size:0.85rem;">1. سجل المسحوبات والمبيعات:</div>
+          <table class="simple-table" style="width:100%; border-collapse:collapse; font-size:0.8rem; margin-bottom:1rem;">
+            <thead>
+              <tr style="background:var(--ab-bg-input); border-bottom:1px solid var(--ab-border);">
+                <th style="padding:0.4rem;">#</th>
+                <th style="padding:0.4rem;">التاريخ</th>
+                <th style="padding:0.4rem;">اسم الصنف</th>
+                <th style="padding:0.4rem;">كود الصنف</th>
+                <th style="padding:0.4rem;">الكمية</th>
+                <th style="padding:0.4rem;">السعر الإجمالي</th>
+                <th style="padding:0.4rem;">حالة السداد</th>
+              </tr>
+            </thead>
+            <tbody id="statementTableBody"></tbody>
+          </table>
+
+          <div style="font-weight:700; margin-bottom:0.35rem; font-size:0.85rem;">2. سجل فواتير المشتريات من الشركة/المورد:</div>
+          <table class="simple-table" style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+            <thead>
+              <tr style="background:var(--ab-bg-input); border-bottom:1px solid var(--ab-border);">
+                <th style="padding:0.4rem;">رقم الفاتورة</th>
+                <th style="padding:0.4rem;">التاريخ</th>
+                <th style="padding:0.4rem;">إجمالي الفاتورة</th>
+                <th style="padding:0.4rem;">المسدد</th>
+                <th style="padding:0.4rem;">المتبقي</th>
+                <th style="padding:0.4rem;">الحالة</th>
+              </tr>
+            </thead>
+            <tbody id="statementPurchasesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="statementModal">إغلاق</button>
+        <button type="button" class="btn-dialog-primary" id="printStatementActionBtn2"><i class="fa-solid fa-print"></i> طباعة الآن</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="db.js"></script>
+  <script src="companies-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
