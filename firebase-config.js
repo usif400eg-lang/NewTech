@@ -1,28 +1,17 @@
 // ============================================================
 // NewTech System - Firebase Cloud Sync Configuration
 // ============================================================
-// خطوات الإعداد:
-// 1. اذهب إلى: https://console.firebase.google.com
-// 2. أنشئ مشروعاً جديداً (مجاناً)
-// 3. من Project Settings → General → SDK Setup → Config
-// 4. انسخ القيم وضعها هنا بدل "YOUR_..."
-// 5. من قائمة Build → Realtime Database → Create Database → Start in Test Mode
-// ============================================================
 
 window.FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyD5qC7EyuO-pR9S_7f_TTPehrcMvlJixlY",
+  authDomain: "newtech-system-18c5f.firebaseapp.com",
+  databaseURL: "https://newtech-system-18c5f-default-rtdb.firebaseio.com",
+  projectId: "newtech-system-18c5f",
+  storageBucket: "newtech-system-18c5f.firebasestorage.app",
+  messagingSenderId: "828148688433",
+  appId: "1:828148688433:web:55d91820a46e786a635710",
+  measurementId: "G-7LFF6DRFRS"
 };
 
-// إذا لم يتم إعداد Firebase بعد، يعمل النظام بـ localStorage فقط (محلي)
-window.FIREBASE_ENABLED = (
-  window.FIREBASE_CONFIG.apiKey &&
-  window.FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY' &&
-  window.FIREBASE_CONFIG.databaseURL &&
-  window.FIREBASE_CONFIG.databaseURL.indexOf('YOUR_PROJECT') === -1
-);
+window.FIREBASE_ENABLED = true;
+
