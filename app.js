@@ -320,12 +320,23 @@
           } catch(e3) {}
         }
 
+        var syncCode12 = (window.CloudUsers && window.CloudUsers.generate12CharCode)
+          ? window.CloudUsers.generate12CharCode()
+          : (function() {
+              var chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+              var s = '';
+              for (var i = 0; i < 12; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+              return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12);
+            })();
+
         var newUser = {
           id: 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
           username: username.toLowerCase(),
           fullName: fullName,
           passwordHash: password,
           role: 'user',
+          syncCode: syncCode12.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(),
+          formattedCode: syncCode12,
           createdAt: new Date().toISOString()
         };
 
@@ -338,7 +349,10 @@
 
         // Save to Firebase Cloud for cross-device access
         if (window.CloudUsers) {
-          try { await window.CloudUsers.saveUser(newUser); } catch(e5) {}
+          try {
+            await window.CloudUsers.saveUser(newUser);
+            await window.CloudUsers.saveSyncCode(newUser.syncCode, newUser);
+          } catch(e5) {}
         }
 
         appState.currentUser = newUser;
@@ -387,102 +401,316 @@
       });
     }
 
-    // ======================================================================
-    // Sync Code: Generate code for current user (to use on another device)
-    // ======================================================================
-    var getSyncCodeBtn = document.getElementById('getSyncCodeBtn');
-    if (getSyncCodeBtn) {
-      getSyncCodeBtn.addEventListener('click', function() {
-        if (!appState.currentUser) {
-          showToast('\u064a\u062c\u0628 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0623\u0648\u0644\u0627\u064b');
-          return;
-        }
+    // Quick link to sync code from login form
+    var linkGotoSyncCode = document.getElementById('linkGotoSyncCode');
+    if (linkGotoSyncCode && tabRegisterBtn) {
+      linkGotoSyncCode.addEventListener('click', function(e) {
+        e.preventDefault();
+        tabRegisterBtn.click();
+        setTimeout(function() {
+          var syncInput = document.getElementById('syncCodeInput');
+          if (syncInput) {
+            syncInput.focus();
+            syncInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      });
+    }
+
+    // Paste button next to syncCodeInput
+    var pasteSyncCodeBtn = document.getElementById('pasteSyncCodeBtn');
+    if (pasteSyncCodeBtn) {
+      pasteSyncCodeBtn.addEventListener('click', async function() {
         try {
-          var syncPayload = {
-            v: 2,
-            id: appState.currentUser.id,
-            username: appState.currentUser.username,
-            fullName: appState.currentUser.fullName,
-            passwordHash: appState.currentUser.passwordHash,
-            role: appState.currentUser.role || 'user',
-            createdAt: appState.currentUser.createdAt || new Date().toISOString()
-          };
-          var syncCode = btoa(unescape(encodeURIComponent(JSON.stringify(syncPayload))));
-          // Show modal with the code
-          var modal = document.createElement('div');
-          modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,6,10,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1.5rem;';
-          modal.innerHTML = '<div style="background:linear-gradient(165deg,rgba(23,25,38,0.99) 0%,rgba(15,16,25,0.99) 100%);border:1px solid rgba(139,92,246,0.4);border-radius:20px;width:100%;max-width:500px;padding:2rem;box-shadow:0 30px 80px rgba(0,0,0,0.8),0 0 35px rgba(139,92,246,0.2);">'
-            + '<h3 style="color:#fff;font-size:1.05rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">'
-            + '<i class="fa-solid fa-arrows-rotate" style="color:#06b6d4;"></i> \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0627\u0644\u062e\u0627\u0635 \u0628\u0643</h3>'
-            + '<p style="color:#9ba0b6;font-size:0.82rem;margin-bottom:1rem;">\u0627\u0646\u0633\u062e \u0647\u0630\u0627 \u0627\u0644\u0643\u0648\u062f \u0648\u0627\u0644\u0635\u0642\u0647 \u0639\u0644\u0649 \u0623\u064a \u062c\u0647\u0627\u0632 \u062a\u0627\u0646\u064a \u0641\u064a \u062e\u0627\u0646\u0629 \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0644\u062a\u0633\u062c\u064a\u0644 \u0646\u0641\u0633 \u0627\u0644\u062d\u0633\u0627\u0628</p>'
-            + '<textarea id="syncCodeDisplay" readonly style="width:100%;background:#0a0b12;border:1px solid #232536;border-radius:12px;padding:0.75rem;color:#a78bfa;font-family:monospace;font-size:0.7rem;word-break:break-all;height:100px;resize:none;direction:ltr;">' + syncCode + '</textarea>'
-            + '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">'
-            + '<button onclick="var t=document.getElementById(\'syncCodeDisplay\');t.select();navigator.clipboard.writeText(t.value).then(function(){}).catch(function(){t.select();document.execCommand(\'copy\');});this.innerHTML=\'<i class=\\\"fa-solid fa-check\\\"></i> \u062a\u0645 \u0627\u0644\u0646\u0633\u062e\';" style="flex:1;padding:0.6rem;background:linear-gradient(135deg,#8b5cf6,#6366f1);border:none;border-radius:12px;color:#fff;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:0.84rem;">'
-            + '<i class="fa-solid fa-copy"></i> \u0646\u0633\u062e \u0627\u0644\u0643\u0648\u062f</button>'
-            + '<button onclick="this.closest(\'div[style*=position\\\\:fixed]\').remove();" style="padding:0.6rem 1rem;background:rgba(255,255,255,0.06);border:1px solid #232536;border-radius:12px;color:#9ba0b6;font-family:Cairo,sans-serif;cursor:pointer;font-size:0.84rem;">\u0625\u063a\u0644\u0627\u0642</button>'
-            + '</div></div>';
-          document.body.appendChild(modal);
-        } catch (err) {
-          showToast('\u062e\u0637\u0623 \u0641\u064a \u0625\u0646\u0634\u0627\u0621 \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629');
+          if (navigator.clipboard && navigator.clipboard.readText) {
+            var txt = await navigator.clipboard.readText();
+            var syncInput = document.getElementById('syncCodeInput');
+            if (syncInput && txt) {
+              syncInput.value = txt.trim().toUpperCase();
+              showToast('تم لصق الكود من الحافظة');
+            }
+          } else {
+            showToast('الصق الكود يدوياً بالضغط المطول أو Ctrl+V');
+          }
+        } catch(e) {
+          showToast('الصق الكود يدوياً بالضغط المطول أو Ctrl+V');
         }
       });
     }
 
     // ======================================================================
-    // Sync Code: Import account from code entered on this device
+    // Sync Code: Generate 12-character code for current user
+    // ======================================================================
+    var getSyncCodeBtn = document.getElementById('getSyncCodeBtn');
+    if (getSyncCodeBtn) {
+      getSyncCodeBtn.addEventListener('click', async function() {
+        if (!appState.currentUser) {
+          showToast('يجب تسجيل الدخول أولاً');
+          return;
+        }
+        try {
+          var user = appState.currentUser;
+          var cleanExisting = user.syncCode ? String(user.syncCode).replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : '';
+          
+          if (!cleanExisting || cleanExisting.length !== 12) {
+            var newCode = (window.CloudUsers && window.CloudUsers.generate12CharCode)
+              ? window.CloudUsers.generate12CharCode()
+              : (function() {
+                  var chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+                  var s = '';
+                  for (var i = 0; i < 12; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+                  return s.slice(0, 4) + '-' + s.slice(4, 8) + '-' + s.slice(8, 12);
+                })();
+            cleanExisting = newCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            user.syncCode = cleanExisting;
+            user.formattedCode = newCode;
+            localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+            var localUsers = JSON.parse(localStorage.getItem('newtech_users_v3') || '[]');
+            var uIdx = localUsers.findIndex(function(u) { return (u.username || '').toLowerCase() === (user.username || '').toLowerCase(); });
+            if (uIdx >= 0) {
+              localUsers[uIdx].syncCode = user.syncCode;
+              localUsers[uIdx].formattedCode = user.formattedCode;
+              localStorage.setItem('newtech_users_v3', JSON.stringify(localUsers));
+            }
+            if (window.newTechDB) {
+              try { await window.newTechDB.saveUser(user); } catch(e) {}
+            }
+          }
+
+          var formatted = (window.CloudUsers && window.CloudUsers.formatCode) 
+            ? window.CloudUsers.formatCode(cleanExisting) 
+            : (cleanExisting.slice(0,4) + '-' + cleanExisting.slice(4,8) + '-' + cleanExisting.slice(8,12));
+
+          // Save to Firebase Cloud
+          if (window.CloudUsers) {
+            try {
+              await window.CloudUsers.saveSyncCode(cleanExisting, user);
+              await window.CloudUsers.saveUser(user);
+            } catch(e) {}
+          }
+
+          // Remove any existing sync modal
+          var oldModal = document.getElementById('syncCodeModal');
+          if (oldModal) oldModal.remove();
+
+          // Create Modal with Copy Icon
+          var modal = document.createElement('div');
+          modal.id = 'syncCodeModal';
+          modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,6,10,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(6px);animation:fadeIn 0.2s ease;';
+          modal.innerHTML = '<div style="background:linear-gradient(165deg,rgba(23,25,38,0.99) 0%,rgba(15,16,25,0.99) 100%);border:1px solid rgba(14,165,233,0.4);border-radius:22px;width:100%;max-width:480px;padding:2rem;box-shadow:0 30px 80px rgba(0,0,0,0.8),0 0 35px rgba(14,165,233,0.2);position:relative;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">'
+            + '  <div style="display:flex;align-items:center;gap:0.6rem;">'
+            + '    <div style="width:38px;height:38px;border-radius:10px;background:rgba(14,165,233,0.15);display:flex;align-items:center;justify-content:center;color:#38bdf8;font-size:1.15rem;"><i class="fa-solid fa-arrows-rotate"></i></div>'
+            + '    <h3 style="color:#fff;font-size:1.15rem;margin:0;font-weight:700;">كود المزامنة بين الأجهزة</h3>'
+            + '  </div>'
+            + '  <button id="closeSyncModalX" style="background:transparent;border:none;color:#94a3b8;font-size:1.25rem;cursor:pointer;padding:0.25rem;"><i class="fa-solid fa-xmark"></i></button>'
+            + '</div>'
+            + '<p style="color:#9ba0b6;font-size:0.84rem;margin:0 0 1.25rem;line-height:1.6;">'
+            + 'كود حسابك مكوّن من <strong>12 حرف ورقم</strong>. اضغط على أيقونة النسخ لنسخ الكود واستخدمه على أي جهاز آخر:'
+            + '</p>'
+            + '<div style="background:#090a10;border:1.5px solid rgba(14,165,233,0.35);border-radius:14px;padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;box-shadow:inset 0 2px 10px rgba(0,0,0,0.5);">'
+            + '  <div style="display:flex;flex-direction:column;gap:0.2rem;">'
+            + '    <span style="font-size:0.7rem;color:#64748b;font-weight:600;letter-spacing:0.5px;">كود المزامنة (12 حرف ورقم)</span>'
+            + '    <span id="syncCodeTextVal" style="font-family:\'JetBrains Mono\',monospace;font-size:1.45rem;font-weight:800;letter-spacing:3px;color:#38bdf8;direction:ltr;user-select:all;">' + formatted + '</span>'
+            + '  </div>'
+            + '  <button id="modalCopyCodeBtn" title="نسخ الكود" style="display:flex;align-items:center;gap:0.45rem;padding:0.65rem 1.1rem;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;border-radius:10px;color:#fff;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:0.88rem;transition:all 0.2s ease;box-shadow:0 4px 14px rgba(2,132,199,0.35);">'
+            + '    <i class="fa-solid fa-copy"></i>'
+            + '    <span>نسخ</span>'
+            + '  </button>'
+            + '</div>'
+            + '<div style="display:flex;align-items:center;gap:0.45rem;font-size:0.75rem;color:#10b981;margin-bottom:1.5rem;background:rgba(16,185,129,0.08);padding:0.55rem 0.85rem;border-radius:8px;border:1px solid rgba(16,185,129,0.2);">'
+            + '  <i class="fa-solid fa-circle-check"></i>'
+            + '  <span>الكود متصل بالسحابة (Firebase) وجاهز للمزامنة الفورية على أي جهاز</span>'
+            + '</div>'
+            + '<div style="display:flex;gap:0.75rem;">'
+            + '  <button id="modalCopyCodeFullBtn" style="flex:1;padding:0.75rem;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;border-radius:12px;color:#fff;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;gap:0.5rem;box-shadow:0 4px 16px rgba(2,132,199,0.4);">'
+            + '    <i class="fa-solid fa-copy"></i>'
+            + '    <span>نسخ كود المزامنة</span>'
+            + '  </button>'
+            + '  <button id="closeSyncModalBtn" style="padding:0.75rem 1.25rem;background:rgba(255,255,255,0.06);border:1px solid #232536;border-radius:12px;color:#9ba0b6;font-family:Cairo,sans-serif;cursor:pointer;font-size:0.9rem;">إغلاق</button>'
+            + '</div></div>';
+
+          document.body.appendChild(modal);
+
+          function doCopyCode() {
+            var textToCopy = cleanExisting;
+            var copySuccessful = function() {
+              var btn1 = document.getElementById('modalCopyCodeBtn');
+              var btn2 = document.getElementById('modalCopyCodeFullBtn');
+              if (btn1) {
+                btn1.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+                btn1.innerHTML = '<i class="fa-solid fa-check"></i> <span>تم النسخ!</span>';
+              }
+              if (btn2) {
+                btn2.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+                btn2.innerHTML = '<i class="fa-solid fa-check"></i> <span>تم نسخ الكود بنجاح</span>';
+              }
+              showToast('تم نسخ كود المزامنة (' + formatted + ') بنجاح!');
+              setTimeout(function() {
+                if (btn1) {
+                  btn1.style.background = 'linear-gradient(135deg,#0284c7,#0369a1)';
+                  btn1.innerHTML = '<i class="fa-solid fa-copy"></i> <span>نسخ</span>';
+                }
+                if (btn2) {
+                  btn2.style.background = 'linear-gradient(135deg,#0284c7,#0369a1)';
+                  btn2.innerHTML = '<i class="fa-solid fa-copy"></i> <span>نسخ كود المزامنة</span>';
+                }
+              }, 2500);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(textToCopy).then(copySuccessful).catch(function() {
+                fallbackCopy();
+              });
+            } else {
+              fallbackCopy();
+            }
+
+            function fallbackCopy() {
+              var ta = document.createElement('textarea');
+              ta.value = textToCopy;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.select();
+              try { document.execCommand('copy'); copySuccessful(); } catch(e) {}
+              ta.remove();
+            }
+          }
+
+          var copyBtn1 = document.getElementById('modalCopyCodeBtn');
+          if (copyBtn1) copyBtn1.addEventListener('click', doCopyCode);
+          var copyBtn2 = document.getElementById('modalCopyCodeFullBtn');
+          if (copyBtn2) copyBtn2.addEventListener('click', doCopyCode);
+
+          var codeTextEl = document.getElementById('syncCodeTextVal');
+          if (codeTextEl) {
+            codeTextEl.style.cursor = 'pointer';
+            codeTextEl.title = 'انقر لنسخ الكود';
+            codeTextEl.addEventListener('click', doCopyCode);
+          }
+
+          var closeX = document.getElementById('closeSyncModalX');
+          if (closeX) closeX.addEventListener('click', function() { modal.remove(); });
+          var closeBtn = document.getElementById('closeSyncModalBtn');
+          if (closeBtn) closeBtn.addEventListener('click', function() { modal.remove(); });
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.remove();
+          });
+        } catch (err) {
+          console.error('Sync code generation error:', err);
+          showToast('حدث خطأ في إنشاء كود المزامنة');
+        }
+      });
+    }
+
+    // ======================================================================
+    // Sync Code: Import account from 12-character code
     // ======================================================================
     var importSyncCodeBtn = document.getElementById('importSyncCodeBtn');
     if (importSyncCodeBtn) {
       importSyncCodeBtn.addEventListener('click', async function() {
         var syncInput = document.getElementById('syncCodeInput');
-        var code = syncInput ? syncInput.value.trim() : '';
-        if (!code) {
-          var regErr = document.getElementById('regErrorMsg');
-          var regErrTxt = document.getElementById('regErrorText');
+        var rawCode = syncInput ? syncInput.value.trim() : '';
+        var regErr = document.getElementById('regErrorMsg');
+        var regErrTxt = document.getElementById('regErrorText');
+        function showErr(msg) {
           if (regErr) regErr.style.display = 'flex';
-          if (regErrTxt) regErrTxt.textContent = '\u064a\u0631\u062c\u0649 \u0644\u0635\u0642 \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0623\u0648\u0644\u0627\u064b';
+          if (regErrTxt) regErrTxt.textContent = msg;
+        }
+
+        if (!rawCode) {
+          showErr('يرجى إدخال كود المزامنة المكون من 12 حرف ورقم.');
           return;
         }
+
+        var clean = rawCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        var originalBtnHtml = importSyncCodeBtn.innerHTML;
+        importSyncCodeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>جاري البحث عن الحساب والمزامنة...</span>';
+        importSyncCodeBtn.disabled = true;
+
         try {
-          var decoded = JSON.parse(decodeURIComponent(escape(atob(code))));
-          if (!decoded.username || !decoded.passwordHash) throw new Error('invalid');
-          var importedUser = {
-            id: decoded.id || ('user_' + Date.now()),
-            username: (decoded.username || '').toLowerCase(),
-            fullName: decoded.fullName || decoded.username,
-            passwordHash: decoded.passwordHash,
-            role: decoded.role || 'user',
-            createdAt: decoded.createdAt || new Date().toISOString()
+          var importedUser = null;
+
+          // 1. If 12 characters: lookup via CloudUsers
+          if (clean.length === 12) {
+            if (window.CloudUsers) {
+              importedUser = await window.CloudUsers.getUserBySyncCode(clean);
+            }
+          } else if (rawCode.length > 20) {
+            // Backward compatibility: try legacy base64 decode
+            try {
+              var decoded = JSON.parse(decodeURIComponent(escape(atob(rawCode))));
+              if (decoded.username && decoded.passwordHash) {
+                importedUser = {
+                  id: decoded.id || ('user_' + Date.now()),
+                  username: (decoded.username || '').toLowerCase(),
+                  fullName: decoded.fullName || decoded.username,
+                  passwordHash: decoded.passwordHash,
+                  role: decoded.role || 'user',
+                  syncCode: decoded.syncCode || clean,
+                  createdAt: decoded.createdAt || new Date().toISOString()
+                };
+              }
+            } catch(e) {}
+          }
+
+          if (!importedUser) {
+            if (clean.length !== 12) {
+              showErr('كود المزامنة يجب أن يتكون من 12 حرف ورقم بالضبط (أنت كتبت ' + clean.length + ' رمز).');
+            } else {
+              showErr('لم يتم العثور على حساب مرتبط بهذا الكود (' + clean + '). تأكد من صحة الكود أو اتصاله بالإنترنت.');
+            }
+            importSyncCodeBtn.innerHTML = originalBtnHtml;
+            importSyncCodeBtn.disabled = false;
+            return;
+          }
+
+          var normalizedUser = {
+            id: importedUser.id || ('user_' + Date.now()),
+            username: (importedUser.username || '').toLowerCase(),
+            fullName: importedUser.fullName || importedUser.username,
+            passwordHash: importedUser.passwordHash,
+            role: importedUser.role || 'user',
+            syncCode: clean.length === 12 ? clean : (importedUser.syncCode || ''),
+            formattedCode: clean.length === 12 ? (clean.slice(0,4) + '-' + clean.slice(4,8) + '-' + clean.slice(8,12)) : '',
+            createdAt: importedUser.createdAt || new Date().toISOString()
           };
-          // Save to localStorage
+
+          // Save to localStorage users
           var localUsers = JSON.parse(localStorage.getItem('newtech_users_v3') || '[]');
-          var existingIdx = localUsers.findIndex(function(u) { return (u.username || '').toLowerCase() === importedUser.username; });
+          var existingIdx = localUsers.findIndex(function(u) { return (u.username || '').toLowerCase() === normalizedUser.username; });
           if (existingIdx >= 0) {
-            localUsers[existingIdx] = importedUser;
+            localUsers[existingIdx] = normalizedUser;
           } else {
-            localUsers.push(importedUser);
+            localUsers.push(normalizedUser);
           }
           localStorage.setItem('newtech_users_v3', JSON.stringify(localUsers));
+
           // Save to IndexedDB
           if (window.newTechDB) {
-            try { await window.newTechDB.saveUser(importedUser); } catch(e4) {}
+            try { await window.newTechDB.saveUser(normalizedUser); } catch(e4) {}
           }
+
           // Auto-login
-          appState.currentUser = importedUser;
-          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(importedUser));
-          if (currentUserNameText) currentUserNameText.textContent = '\u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645: ' + (importedUser.fullName || importedUser.username);
+          appState.currentUser = normalizedUser;
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(normalizedUser));
+          if (currentUserNameText) currentUserNameText.textContent = 'المستخدم: ' + (normalizedUser.fullName || normalizedUser.username);
           if (loginScreen) {
             loginScreen.classList.add('is-hidden');
             loginScreen.style.display = 'none';
           }
           await loadData();
           renderAll();
-          showToast('\u062a\u0645 \u0627\u0633\u062a\u064a\u0631\u0627\u062f \u062d\u0633\u0627\u0628 ' + (importedUser.fullName || importedUser.username) + ' \u0628\u0646\u062c\u0627\u062d! \u0645\u0631\u062d\u0628\u0627\u064b \u0628\u0643 \u0639\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u062c\u0647\u0627\u0632');
+          showToast('تم استيراد وتسجيل دخول حساب (' + (normalizedUser.fullName || normalizedUser.username) + ') بنجاح!');
         } catch (err) {
-          var regErr2 = document.getElementById('regErrorMsg');
-          var regErrTxt2 = document.getElementById('regErrorText');
-          if (regErr2) regErr2.style.display = 'flex';
-          if (regErrTxt2) regErrTxt2.textContent = '\u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u063a\u064a\u0631 \u0635\u062d\u064a\u062d \u0623\u0648 \u062a\u0627\u0644\u0641. \u062d\u0627\u0648\u0644 \u062a\u0648\u0644\u064a\u062f\u0647 \u0645\u0646 \u062c\u062f\u064a\u062f';
+          console.error('Import sync code error:', err);
+          showErr('حدث خطأ أثناء استيراد الحساب: ' + (err.message || 'حاول ثانية'));
+        } finally {
+          if (importSyncCodeBtn) {
+            importSyncCodeBtn.innerHTML = originalBtnHtml;
+            importSyncCodeBtn.disabled = false;
+          }
         }
       });
     }

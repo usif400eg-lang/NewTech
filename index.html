@@ -92,6 +92,13 @@
         <div class="login-hint-badge">
           حساب الأدمن الافتراضي: اليوزر <strong>admin</strong> | الباسورد <strong>1</strong>
         </div>
+
+        <div style="text-align:center; margin-top:0.6rem;">
+          <a href="#" id="linkGotoSyncCode" style="font-size:0.78rem; color:var(--ab-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:0.35rem; transition:all 0.15s ease;">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>معك كود مزامنة (12 حرف ورقم) لنقل حسابك؟ اضغط هنا</span>
+          </a>
+        </div>
       </form>
 
       <!-- نموذج إنشاء حساب جديد -->
@@ -147,19 +154,30 @@
         </button>
 
         <!-- ======= قسم المزامنة بين الأجهزة ======= -->
-        <div class="sync-divider"><span>أو استورد حساب موجود</span></div>
+        <div class="sync-divider"><span>أو الدخول عبر كود المزامنة</span></div>
         <div class="sync-import-box">
           <div class="sync-import-title">
             <i class="fa-solid fa-arrows-rotate" style="color:var(--ab-cyan);"></i>
-            عندك حساب على جهاز تاني؟ — الصق كود المزامنة
+            <span>عندك حساب على جهاز تاني؟ — أدخل كود المزامنة (12 رمز):</span>
           </div>
-          <div class="login-input-wrap" style="margin-top:0.5rem;">
-            <input type="text" id="syncCodeInput" class="login-input" placeholder="الصق كود المزامنة هنا..." autocomplete="off" spellcheck="false" style="font-family:monospace; font-size:0.72rem; letter-spacing:0.5px;">
-            <i class="fa-solid fa-qrcode"></i>
+          <div class="login-input-wrap" style="margin-top:0.5rem; position:relative;">
+            <input 
+              type="text" 
+              id="syncCodeInput" 
+              class="login-input" 
+              placeholder="مثال: A7B4-9C8D-2E3F" 
+              autocomplete="off" 
+              spellcheck="false" 
+              maxlength="16" 
+              style="font-family:monospace; font-size:0.92rem; font-weight:700; letter-spacing:1.5px; text-align:center; text-transform:uppercase; padding-left:2.6rem;"
+            >
+            <button type="button" id="pasteSyncCodeBtn" class="btn-paste-code" title="لصق الكود من الحافظة" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:var(--ab-cyan); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.85rem; transition:all 0.15s ease;">
+              <i class="fa-solid fa-paste"></i>
+            </button>
           </div>
           <button type="button" id="importSyncCodeBtn" class="btn-login-submit" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); margin-top:0.5rem;">
-            <i class="fa-solid fa-file-import"></i>
-            <span>استيراد الحساب من كود المزامنة</span>
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>دخول بالحساب عبر كود المزامنة</span>
           </button>
         </div>
       </form>

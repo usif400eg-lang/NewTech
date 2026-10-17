@@ -575,6 +575,32 @@ html {
   gap: 0.4rem;
 }
 
+.btn-paste-code {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--ab-cyan);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+.btn-paste-code:hover {
+  background: rgba(14, 165, 233, 0.25);
+  border-color: var(--ab-cyan);
+  color: #fff;
+  transform: translateY(-50%) scale(1.08);
+  filter: drop-shadow(0 0 6px var(--ab-cyan-glow));
+}
+
 /* Sound Toggle Button */
 .sound-toggle-btn {
   background: var(--ab-bg-input);
