@@ -7,7 +7,7 @@
 class NewTechDB {
   constructor() {
     this.dbName = 'NewTechSystem_EnterpriseDB';
-    this.dbVersion = 5; // ترقية لضم المستخدمين والمشتريات وضمان إنشاء الجداول
+    this.dbVersion = 6; // ترقية لدعم سندات القبض والصرف، المصروفات العامة، والمخزون الأوتوماتيكي
     this.db = null;
     this.isReady = false;
     this.initPromise = null;
@@ -93,6 +93,32 @@ class NewTechDB {
           // 6. إعدادات النظام (Settings Store)
           if (!db.objectStoreNames.contains('settings')) {
             db.createObjectStore('settings', { keyPath: 'key' });
+          }
+
+          // 7. جدول سندات القبض والصرف (Vouchers Store)
+          if (!db.objectStoreNames.contains('vouchers')) {
+            const vStore = db.createObjectStore('vouchers', { keyPath: 'id' });
+            vStore.createIndex('type', 'type', { unique: false });
+            vStore.createIndex('companyId', 'companyId', { unique: false });
+            vStore.createIndex('date', 'date', { unique: false });
+            vStore.createIndex('userId', 'userId', { unique: false });
+          }
+
+          // 8. جدول المصروفات العامة (Expenses Store)
+          if (!db.objectStoreNames.contains('expenses')) {
+            const expStore = db.createObjectStore('expenses', { keyPath: 'id' });
+            expStore.createIndex('category', 'category', { unique: false });
+            expStore.createIndex('date', 'date', { unique: false });
+            expStore.createIndex('userId', 'userId', { unique: false });
+          }
+
+          // 9. جدول الأصناف والمخزون (Products Store)
+          if (!db.objectStoreNames.contains('products')) {
+            const prodStore = db.createObjectStore('products', { keyPath: 'id' });
+            prodStore.createIndex('code', 'code', { unique: false });
+            prodStore.createIndex('name', 'name', { unique: false });
+            prodStore.createIndex('category', 'category', { unique: false });
+            prodStore.createIndex('userId', 'userId', { unique: false });
           }
         };
 
@@ -735,14 +761,249 @@ class NewTechDB {
     });
   }
 
+  // ==========================================
+  // سندات القبض والصرف (Receipt & Payment Vouchers)
+  // ==========================================
+  async getAllVouchers(userId = null) {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_vouchers') || '[]');
+    try {
+      if (!this.db || !this.db.objectStoreNames.contains('vouchers')) return local;
+      return new Promise((resolve) => {
+        const tx = this.db.transaction('vouchers', 'readonly');
+        const store = tx.objectStore('vouchers');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const dbItems = req.result || [];
+          const map = new Map();
+          local.forEach(v => map.set(v.id, v));
+          dbItems.forEach(v => map.set(v.id, v));
+          let list = Array.from(map.values());
+          if (userId) list = list.filter(v => !v.userId || v.userId === userId);
+          list.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+          resolve(list);
+        };
+        req.onerror = () => resolve(local);
+      });
+    } catch (e) {
+      return local;
+    }
+  }
+
+  async saveVoucher(voucher) {
+    await this.ensureReady();
+    if (!voucher.id) voucher.id = 'vch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    if (!voucher.createdAt) voucher.createdAt = new Date().toISOString();
+
+    const local = JSON.parse(localStorage.getItem('newtech_vouchers') || '[]');
+    const idx = local.findIndex(v => v.id === voucher.id);
+    if (idx >= 0) local[idx] = voucher; else local.unshift(voucher);
+    localStorage.setItem('newtech_vouchers', JSON.stringify(local));
+
+    if (this.db && this.db.objectStoreNames.contains('vouchers')) {
+      try {
+        const tx = this.db.transaction(['vouchers', 'audit_log'], 'readwrite');
+        tx.objectStore('vouchers').put(voucher);
+        tx.objectStore('audit_log').add({
+          action: 'SAVE_VOUCHER',
+          details: `سند ${voucher.type === 'receipt' ? 'قبض' : 'صرف'} رقم ${voucher.voucherNumber || voucher.id} بقيمة ${voucher.amount} ج.م للطرف ${voucher.companyName || ''}`,
+          timestamp: new Date().toISOString(),
+          userId: voucher.userId || null
+        });
+      } catch (e) {
+        console.warn('Save voucher IndexedDB error:', e);
+      }
+    }
+    return voucher;
+  }
+
+  async deleteVoucher(voucherId, reason = 'حذف سند') {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_vouchers') || '[]');
+    const updated = local.filter(v => v.id !== voucherId);
+    localStorage.setItem('newtech_vouchers', JSON.stringify(updated));
+
+    if (this.db && this.db.objectStoreNames.contains('vouchers')) {
+      try {
+        const tx = this.db.transaction(['vouchers', 'audit_log'], 'readwrite');
+        tx.objectStore('vouchers').delete(voucherId);
+        tx.objectStore('audit_log').add({
+          action: 'DELETE_VOUCHER',
+          details: `حذف سند ID: ${voucherId} - السبب: ${reason}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {}
+    }
+    return true;
+  }
+
+  // ==========================================
+  // المصروفات والنثريات العامة (Operating Expenses)
+  // ==========================================
+  async getAllExpenses(userId = null) {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_expenses') || '[]');
+    try {
+      if (!this.db || !this.db.objectStoreNames.contains('expenses')) return local;
+      return new Promise((resolve) => {
+        const tx = this.db.transaction('expenses', 'readonly');
+        const store = tx.objectStore('expenses');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const dbItems = req.result || [];
+          const map = new Map();
+          local.forEach(e => map.set(e.id, e));
+          dbItems.forEach(e => map.set(e.id, e));
+          let list = Array.from(map.values());
+          if (userId) list = list.filter(e => !e.userId || e.userId === userId);
+          list.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+          resolve(list);
+        };
+        req.onerror = () => resolve(local);
+      });
+    } catch (e) {
+      return local;
+    }
+  }
+
+  async saveExpense(expense) {
+    await this.ensureReady();
+    if (!expense.id) expense.id = 'exp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    if (!expense.createdAt) expense.createdAt = new Date().toISOString();
+
+    const local = JSON.parse(localStorage.getItem('newtech_expenses') || '[]');
+    const idx = local.findIndex(e => e.id === expense.id);
+    if (idx >= 0) local[idx] = expense; else local.unshift(expense);
+    localStorage.setItem('newtech_expenses', JSON.stringify(local));
+
+    if (this.db && this.db.objectStoreNames.contains('expenses')) {
+      try {
+        const tx = this.db.transaction(['expenses', 'audit_log'], 'readwrite');
+        tx.objectStore('expenses').put(expense);
+        tx.objectStore('audit_log').add({
+          action: 'SAVE_EXPENSE',
+          details: `تسجيل مصروف ${expense.title || expense.category} بقيمة ${expense.amount} ج.م`,
+          timestamp: new Date().toISOString(),
+          userId: expense.userId || null
+        });
+      } catch (e) {}
+    }
+    return expense;
+  }
+
+  async deleteExpense(expenseId, reason = 'حذف مصروف') {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_expenses') || '[]');
+    const updated = local.filter(e => e.id !== expenseId);
+    localStorage.setItem('newtech_expenses', JSON.stringify(updated));
+
+    if (this.db && this.db.objectStoreNames.contains('expenses')) {
+      try {
+        const tx = this.db.transaction(['expenses', 'audit_log'], 'readwrite');
+        tx.objectStore('expenses').delete(expenseId);
+        tx.objectStore('audit_log').add({
+          action: 'DELETE_EXPENSE',
+          details: `حذف مصروف ID: ${expenseId} - السبب: ${reason}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {}
+    }
+    return true;
+  }
+
+  // ==========================================
+  // الأصناف والمخزون (Inventory & Products)
+  // ==========================================
+  async getAllProducts(userId = null) {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_products') || '[]');
+    try {
+      if (!this.db || !this.db.objectStoreNames.contains('products')) return local;
+      return new Promise((resolve) => {
+        const tx = this.db.transaction('products', 'readonly');
+        const store = tx.objectStore('products');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const dbItems = req.result || [];
+          const map = new Map();
+          local.forEach(p => map.set(p.id, p));
+          dbItems.forEach(p => map.set(p.id, p));
+          let list = Array.from(map.values());
+          if (userId) list = list.filter(p => !p.userId || p.userId === userId);
+          list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ar'));
+          resolve(list);
+        };
+        req.onerror = () => resolve(local);
+      });
+    } catch (e) {
+      return local;
+    }
+  }
+
+  async saveProduct(product) {
+    await this.ensureReady();
+    if (!product.id) product.id = 'prd_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    if (!product.createdAt) product.createdAt = new Date().toISOString();
+
+    const local = JSON.parse(localStorage.getItem('newtech_products') || '[]');
+    const idx = local.findIndex(p => p.id === product.id);
+    if (idx >= 0) local[idx] = product; else local.push(product);
+    localStorage.setItem('newtech_products', JSON.stringify(local));
+
+    if (this.db && this.db.objectStoreNames.contains('products')) {
+      try {
+        const tx = this.db.transaction(['products', 'audit_log'], 'readwrite');
+        tx.objectStore('products').put(product);
+        tx.objectStore('audit_log').add({
+          action: 'SAVE_PRODUCT',
+          details: `حفظ صنف مخزون ${product.name} (كود: ${product.code || 'بدون'}) رصيد: ${product.quantity}`,
+          timestamp: new Date().toISOString(),
+          userId: product.userId || null
+        });
+      } catch (e) {}
+    }
+    return product;
+  }
+
+  async updateProductQuantity(productIdOrName, delta) {
+    const products = await this.getAllProducts();
+    const p = products.find(prod => prod.id === productIdOrName || (prod.name && prod.name.trim().toLowerCase() === String(productIdOrName).trim().toLowerCase()));
+    if (!p) return null;
+    p.quantity = Math.max(0, (Number(p.quantity) || 0) + Number(delta));
+    return await this.saveProduct(p);
+  }
+
+  async deleteProduct(productId, reason = 'حذف صنف') {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_products') || '[]');
+    const updated = local.filter(p => p.id !== productId);
+    localStorage.setItem('newtech_products', JSON.stringify(updated));
+
+    if (this.db && this.db.objectStoreNames.contains('products')) {
+      try {
+        const tx = this.db.transaction(['products', 'audit_log'], 'readwrite');
+        tx.objectStore('products').delete(productId);
+        tx.objectStore('audit_log').add({
+          action: 'DELETE_PRODUCT',
+          details: `حذف صنف ID: ${productId} - السبب: ${reason}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {}
+    }
+    return true;
+  }
+
   async getDatabaseStats() {
     const transactions = await this.getAllTransactions();
     const purchases = await this.getAllPurchases();
     const companies = await this.getAllCompanies();
     const users = await this.getAllUsers();
+    const vouchers = await this.getAllVouchers();
+    const expenses = await this.getAllExpenses();
+    const products = await this.getAllProducts();
     const logs = await this.getAuditLogs(500);
 
-    const rawData = JSON.stringify({ transactions, purchases, companies, users, logs });
+    const rawData = JSON.stringify({ transactions, purchases, companies, users, vouchers, expenses, products, logs });
     const sizeKB = (new Blob([rawData]).size / 1024).toFixed(2);
 
     return {
@@ -754,6 +1015,9 @@ class NewTechDB {
       purchasesCount: purchases.length,
       companiesCount: companies.length,
       usersCount: users.length,
+      vouchersCount: vouchers.length,
+      expensesCount: expenses.length,
+      productsCount: products.length,
       auditLogsCount: logs.length,
       approxSizeKB: sizeKB
     };
