@@ -13,7 +13,8 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   
-  <link rel="icon" type="image/png" href="logo.png">`n  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- انبعاثات ضوئية خلفية نيون -->
@@ -1078,7 +1079,13 @@
   <!-- Toast -->
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- Firebase SDK (for cross-device user sync) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <!-- Scripts -->
+  <script src="firebase-config.js"></script>
+  <script src="cloud-users.js"></script>
   <script src="db.js"></script>
   <script src="companies-data.js"></script>
   <script src="app.js"></script>

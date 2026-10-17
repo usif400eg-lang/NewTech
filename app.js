@@ -214,13 +214,35 @@
         }
 
         var user = null;
+
+        // 1. Check localStorage first (fastest)
         try {
           var localUsers1 = JSON.parse(localStorage.getItem('newtech_users_v3') || '[]');
           user = localUsers1.find(function(u) { return (u.username || '').toLowerCase() === username.toLowerCase(); }) || null;
         } catch(e1) {}
 
+        // 2. Check IndexedDB
         if (!user && window.newTechDB) {
           try { user = await window.newTechDB.getUserByUsername(username); } catch(e2) {}
+        }
+
+        // 3. Check Firebase Cloud (cross-device sync)
+        if (!user && window.CloudUsers) {
+          try {
+            var cloudUser = await window.CloudUsers.getUser(username);
+            if (cloudUser && cloudUser.passwordHash === password) {
+              user = cloudUser;
+              // Cache locally for offline use
+              try {
+                var localUsers1b = JSON.parse(localStorage.getItem('newtech_users_v3') || '[]');
+                var existsLocally = localUsers1b.some(function(u) { return (u.username||'').toLowerCase() === (cloudUser.username||'').toLowerCase(); });
+                if (!existsLocally) {
+                  localUsers1b.push(cloudUser);
+                  localStorage.setItem('newtech_users_v3', JSON.stringify(localUsers1b));
+                }
+              } catch(ec) {}
+            }
+          } catch(e3) {}
         }
 
         var isDefaultAdmin = (username.toLowerCase() === 'admin' && password === '1');
@@ -312,6 +334,11 @@
 
         if (window.newTechDB) {
           try { await window.newTechDB.saveUser(newUser); } catch(e4) {}
+        }
+
+        // Save to Firebase Cloud for cross-device access
+        if (window.CloudUsers) {
+          try { await window.CloudUsers.saveUser(newUser); } catch(e5) {}
         }
 
         appState.currentUser = newUser;
