@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NewTech System - Enterprise Sales, Purchases, Clearing & Multi-Device ERP Engine
  * المحرك المالي المتكامل:
  * 1. حسابات الشركات والموردين
@@ -356,6 +356,106 @@
             loginScreen.style.display = 'flex';
           }
           showToast('\u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c \u0648\u0642\u0641\u0644 \u0627\u0644\u0633\u064a\u0633\u062a\u0645 \u0628\u0646\u062c\u0627\u062d');
+        }
+      });
+    }
+
+    // ======================================================================
+    // Sync Code: Generate code for current user (to use on another device)
+    // ======================================================================
+    var getSyncCodeBtn = document.getElementById('getSyncCodeBtn');
+    if (getSyncCodeBtn) {
+      getSyncCodeBtn.addEventListener('click', function() {
+        if (!appState.currentUser) {
+          showToast('\u064a\u062c\u0628 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0623\u0648\u0644\u0627\u064b');
+          return;
+        }
+        try {
+          var syncPayload = {
+            v: 2,
+            id: appState.currentUser.id,
+            username: appState.currentUser.username,
+            fullName: appState.currentUser.fullName,
+            passwordHash: appState.currentUser.passwordHash,
+            role: appState.currentUser.role || 'user',
+            createdAt: appState.currentUser.createdAt || new Date().toISOString()
+          };
+          var syncCode = btoa(unescape(encodeURIComponent(JSON.stringify(syncPayload))));
+          // Show modal with the code
+          var modal = document.createElement('div');
+          modal.style.cssText = 'position:fixed;inset:0;background:rgba(5,6,10,0.88);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1.5rem;';
+          modal.innerHTML = '<div style="background:linear-gradient(165deg,rgba(23,25,38,0.99) 0%,rgba(15,16,25,0.99) 100%);border:1px solid rgba(139,92,246,0.4);border-radius:20px;width:100%;max-width:500px;padding:2rem;box-shadow:0 30px 80px rgba(0,0,0,0.8),0 0 35px rgba(139,92,246,0.2);">'
+            + '<h3 style="color:#fff;font-size:1.05rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;">'
+            + '<i class="fa-solid fa-arrows-rotate" style="color:#06b6d4;"></i> \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0627\u0644\u062e\u0627\u0635 \u0628\u0643</h3>'
+            + '<p style="color:#9ba0b6;font-size:0.82rem;margin-bottom:1rem;">\u0627\u0646\u0633\u062e \u0647\u0630\u0627 \u0627\u0644\u0643\u0648\u062f \u0648\u0627\u0644\u0635\u0642\u0647 \u0639\u0644\u0649 \u0623\u064a \u062c\u0647\u0627\u0632 \u062a\u0627\u0646\u064a \u0641\u064a \u062e\u0627\u0646\u0629 \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0644\u062a\u0633\u062c\u064a\u0644 \u0646\u0641\u0633 \u0627\u0644\u062d\u0633\u0627\u0628</p>'
+            + '<textarea id="syncCodeDisplay" readonly style="width:100%;background:#0a0b12;border:1px solid #232536;border-radius:12px;padding:0.75rem;color:#a78bfa;font-family:monospace;font-size:0.7rem;word-break:break-all;height:100px;resize:none;direction:ltr;">' + syncCode + '</textarea>'
+            + '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">'
+            + '<button onclick="var t=document.getElementById(\'syncCodeDisplay\');t.select();navigator.clipboard.writeText(t.value).then(function(){}).catch(function(){t.select();document.execCommand(\'copy\');});this.innerHTML=\'<i class=\\\"fa-solid fa-check\\\"></i> \u062a\u0645 \u0627\u0644\u0646\u0633\u062e\';" style="flex:1;padding:0.6rem;background:linear-gradient(135deg,#8b5cf6,#6366f1);border:none;border-radius:12px;color:#fff;font-family:Cairo,sans-serif;font-weight:700;cursor:pointer;font-size:0.84rem;">'
+            + '<i class="fa-solid fa-copy"></i> \u0646\u0633\u062e \u0627\u0644\u0643\u0648\u062f</button>'
+            + '<button onclick="this.closest(\'div[style*=position\\\\:fixed]\').remove();" style="padding:0.6rem 1rem;background:rgba(255,255,255,0.06);border:1px solid #232536;border-radius:12px;color:#9ba0b6;font-family:Cairo,sans-serif;cursor:pointer;font-size:0.84rem;">\u0625\u063a\u0644\u0627\u0642</button>'
+            + '</div></div>';
+          document.body.appendChild(modal);
+        } catch (err) {
+          showToast('\u062e\u0637\u0623 \u0641\u064a \u0625\u0646\u0634\u0627\u0621 \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629');
+        }
+      });
+    }
+
+    // ======================================================================
+    // Sync Code: Import account from code entered on this device
+    // ======================================================================
+    var importSyncCodeBtn = document.getElementById('importSyncCodeBtn');
+    if (importSyncCodeBtn) {
+      importSyncCodeBtn.addEventListener('click', async function() {
+        var syncInput = document.getElementById('syncCodeInput');
+        var code = syncInput ? syncInput.value.trim() : '';
+        if (!code) {
+          var regErr = document.getElementById('regErrorMsg');
+          var regErrTxt = document.getElementById('regErrorText');
+          if (regErr) regErr.style.display = 'flex';
+          if (regErrTxt) regErrTxt.textContent = '\u064a\u0631\u062c\u0649 \u0644\u0635\u0642 \u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u0623\u0648\u0644\u0627\u064b';
+          return;
+        }
+        try {
+          var decoded = JSON.parse(decodeURIComponent(escape(atob(code))));
+          if (!decoded.username || !decoded.passwordHash) throw new Error('invalid');
+          var importedUser = {
+            id: decoded.id || ('user_' + Date.now()),
+            username: (decoded.username || '').toLowerCase(),
+            fullName: decoded.fullName || decoded.username,
+            passwordHash: decoded.passwordHash,
+            role: decoded.role || 'user',
+            createdAt: decoded.createdAt || new Date().toISOString()
+          };
+          // Save to localStorage
+          var localUsers = JSON.parse(localStorage.getItem('newtech_users_v3') || '[]');
+          var existingIdx = localUsers.findIndex(function(u) { return (u.username || '').toLowerCase() === importedUser.username; });
+          if (existingIdx >= 0) {
+            localUsers[existingIdx] = importedUser;
+          } else {
+            localUsers.push(importedUser);
+          }
+          localStorage.setItem('newtech_users_v3', JSON.stringify(localUsers));
+          // Save to IndexedDB
+          if (window.newTechDB) {
+            try { await window.newTechDB.saveUser(importedUser); } catch(e4) {}
+          }
+          // Auto-login
+          appState.currentUser = importedUser;
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(importedUser));
+          if (currentUserNameText) currentUserNameText.textContent = '\u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645: ' + (importedUser.fullName || importedUser.username);
+          if (loginScreen) {
+            loginScreen.classList.add('is-hidden');
+            loginScreen.style.display = 'none';
+          }
+          await loadData();
+          renderAll();
+          showToast('\u062a\u0645 \u0627\u0633\u062a\u064a\u0631\u0627\u062f \u062d\u0633\u0627\u0628 ' + (importedUser.fullName || importedUser.username) + ' \u0628\u0646\u062c\u0627\u062d! \u0645\u0631\u062d\u0628\u0627\u064b \u0628\u0643 \u0639\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u062c\u0647\u0627\u0632');
+        } catch (err) {
+          var regErr2 = document.getElementById('regErrorMsg');
+          var regErrTxt2 = document.getElementById('regErrorText');
+          if (regErr2) regErr2.style.display = 'flex';
+          if (regErrTxt2) regErrTxt2.textContent = '\u0643\u0648\u062f \u0627\u0644\u0645\u0632\u0627\u0645\u0646\u0629 \u063a\u064a\u0631 \u0635\u062d\u064a\u062d \u0623\u0648 \u062a\u0627\u0644\u0641. \u062d\u0627\u0648\u0644 \u062a\u0648\u0644\u064a\u062f\u0647 \u0645\u0646 \u062c\u062f\u064a\u062f';
         }
       });
     }

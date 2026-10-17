@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    NewTech System - Master Enterprise Theme
    ثيم متطور واحترافي: انبعاثات ضوئية نيون + كيرفات انسيابية ناعمة + تجربة حية وتفاعلية
    ========================================================================== */
@@ -516,6 +516,63 @@ html {
 .btn-logout:hover {
   color: var(--ab-unpaid);
   filter: drop-shadow(0 0 6px var(--ab-unpaid-glow));
+}
+
+/* Sync Code Button */
+.btn-sync-code {
+  background: transparent;
+  border: none;
+  color: var(--ab-cyan);
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.82rem;
+  margin-right: 0.2rem;
+  transition: all 0.15s ease;
+  border-radius: var(--radius-pill);
+}
+.btn-sync-code:hover {
+  color: #fff;
+  filter: drop-shadow(0 0 6px var(--ab-cyan-glow));
+  transform: rotate(90deg);
+}
+
+/* Sync Divider */
+.sync-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+}
+.sync-divider::before,
+.sync-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ab-border);
+}
+.sync-divider span {
+  font-size: 0.75rem;
+  color: var(--ab-text-dim);
+  white-space: nowrap;
+}
+
+/* Sync Import Box */
+.sync-import-box {
+  background: rgba(6, 182, 212, 0.05);
+  border: 1px dashed rgba(6, 182, 212, 0.3);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.sync-import-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ab-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 /* Sound Toggle Button */

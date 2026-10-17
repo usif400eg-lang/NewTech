@@ -144,6 +144,23 @@
           <i class="fa-solid fa-user-check"></i>
           <span>إنشاء الحساب وبدء العمل</span>
         </button>
+
+        <!-- ======= قسم المزامنة بين الأجهزة ======= -->
+        <div class="sync-divider"><span>أو استورد حساب موجود</span></div>
+        <div class="sync-import-box">
+          <div class="sync-import-title">
+            <i class="fa-solid fa-arrows-rotate" style="color:var(--ab-cyan);"></i>
+            عندك حساب على جهاز تاني؟ — الصق كود المزامنة
+          </div>
+          <div class="login-input-wrap" style="margin-top:0.5rem;">
+            <input type="text" id="syncCodeInput" class="login-input" placeholder="الصق كود المزامنة هنا..." autocomplete="off" spellcheck="false" style="font-family:monospace; font-size:0.72rem; letter-spacing:0.5px;">
+            <i class="fa-solid fa-qrcode"></i>
+          </div>
+          <button type="button" id="importSyncCodeBtn" class="btn-login-submit" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); margin-top:0.5rem;">
+            <i class="fa-solid fa-file-import"></i>
+            <span>استيراد الحساب من كود المزامنة</span>
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -181,6 +198,9 @@
       <div class="user-profile-badge" id="userProfileBadge">
         <i class="fa-solid fa-user-shield"></i>
         <span id="currentUserNameText">المشرف: admin</span>
+        <button class="btn-sync-code" id="getSyncCodeBtn" title="احصل على كود المزامنة لنقل حسابك لجهاز تاني">
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
         <button class="btn-logout" id="logoutBtn" title="تسجيل الخروج من السيستم">
           <i class="fa-solid fa-power-off"></i>
         </button>
