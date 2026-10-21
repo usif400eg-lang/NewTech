@@ -2177,21 +2177,20 @@ html {
 
 /* POS Main Split */
 .pos-main-split {
-  display: grid;
-  grid-template-columns: 1fr 420px;
+  display: flex;
   gap: 0.85rem;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .pos-main-split {
-    grid-template-columns: 1fr 360px;
+    flex-direction: column;
   }
 }
 
-/* Catalog Grid Section */
+
 .pos-catalog-section {
   display: flex;
   flex-direction: column;
@@ -2314,7 +2313,7 @@ html {
   color: #ef4444;
 }
 
-/* POS Cart Section (الفاتورة الحالية) */
+/* POS Cart Section (الفاتورة الحالية) - تأخد كل المساحة لأن الكتالوج مخفي */
 .pos-cart-section {
   display: flex;
   flex-direction: column;
@@ -2324,6 +2323,8 @@ html {
   padding: 0.75rem;
   min-height: 0;
   overflow: hidden;
+  flex: 1;
+  width: 100%;
 }
 
 .pos-invoice-header {

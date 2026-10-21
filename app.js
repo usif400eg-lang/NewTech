@@ -3686,6 +3686,11 @@
       if (classicView) classicView.style.display = 'none';
       if (btnSwitchPOS) btnSwitchPOS.classList.add('active');
       if (btnSwitchReg) btnSwitchReg.classList.remove('active');
+      // الكتالوج مخفي - الكاشير يعتمد على الكود فقط
+      const catalogSection = document.getElementById('posCatalogSection');
+      const cartSection = document.querySelector('.pos-cart-section');
+      if (catalogSection) catalogSection.style.display = 'none';
+      if (cartSection) { cartSection.style.flex = '1'; cartSection.style.width = '100%'; cartSection.style.maxWidth = '100%'; }
       renderPOSCatalog();
       renderPOSCart();
       const scanInp = document.getElementById('posBarcodeScanInput');
@@ -4358,7 +4363,7 @@
         <tr>
           <td colspan="5" style="text-align:center; padding:2.5rem 1rem; color:var(--ab-text-dim);">
             <i class="fa-solid fa-cart-shopping" style="font-size:2rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>
-            الفاتورة فارغة.. اضغط <kbd style="color:var(--ab-cyan);">F12</kbd> لكتابة كود الصنف أو انقر على صنف من القائمة
+            الفاتورة فارغة.. اضغط <kbd style="color:var(--ab-cyan);">مزيد</kbd> أو <kbd style="color:var(--ab-cyan);">F12</kbd> لكتابة كود الصنف وإضافته
           </td>
         </tr>
       `;
@@ -4395,8 +4400,18 @@
               </div>
             </div>
           </td>
-          <td style="text-align:center; font-family:var(--font-latin); font-weight:700; color:var(--ab-cyan);">
-            ${item.salePrice.toFixed(2)}
+          <td style="text-align:center; padding:0.2rem 0.4rem;">
+            <input 
+              type="number" 
+              class="pos-price-edit-input" 
+              data-cart-action="edit-price" 
+              data-id="${item.id}" 
+              value="${item.salePrice.toFixed(2)}" 
+              min="0" 
+              step="0.01" 
+              title="انقر لتعديل سعر البيع"
+              style="width:80px; text-align:center; font-family:var(--font-latin); font-weight:700; color:var(--ab-cyan); background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.3); border-radius:6px; padding:0.2rem 0.3rem; font-size:0.88rem;"
+            />
           </td>
           <td style="text-align:center;">
             <div class="pos-qty-stepper">
@@ -4435,6 +4450,29 @@
     }
 
     tbody.innerHTML = rowsHtml;
+
+    // ربط تعديل سعر البيع مباشرة من خلايا الجدول
+    tbody.querySelectorAll('input[data-cart-action="edit-price"]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const itemId = inp.getAttribute('data-id');
+        const newPrice = parseFloat(inp.value);
+        if (!isNaN(newPrice) && newPrice >= 0) {
+          const cartItem = appState.posCart.find(i => i.id === itemId);
+          if (cartItem) {
+            cartItem.salePrice = newPrice;
+            // تحديث خلية الإجمالي في نفس الصف فوراً
+            const row = inp.closest('tr');
+            if (row) {
+              const totalCell = row.querySelector('td:nth-child(4)');
+              if (totalCell) totalCell.textContent = (newPrice * cartItem.qty).toFixed(2);
+            }
+            recalcPOSCartTotals();
+          }
+        }
+      });
+      // تحديد النص عند النقر لسهولة التعديل
+      inp.addEventListener('focus', () => inp.select());
+    });
 
     // ربط إدخال الكود في السطر الجديد
     const inlineInp = document.getElementById('posInlineCodeInput');
