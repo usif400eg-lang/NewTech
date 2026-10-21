@@ -3792,7 +3792,23 @@
       checkoutBtn.addEventListener('click', checkoutPOS);
     }
 
-    // ربط نقر شريط الاختصارات السريعة أسفل السلة
+    // ربط نقر شريط الأزرار السريعة أعلى الفاتورة (btnCmdF12, btnCmdF5, btnCmdF4, btnCmdF2, btnCmdCtrlDel)
+    const btnCmdF12 = document.getElementById('btnCmdF12');
+    if (btnCmdF12) btnCmdF12.addEventListener('click', startPosInlineCodeEntry);
+
+    const btnCmdF5 = document.getElementById('btnCmdF5');
+    if (btnCmdF5) btnCmdF5.addEventListener('click', () => openProductDetailsModal());
+
+    const btnCmdF4 = document.getElementById('btnCmdF4');
+    if (btnCmdF4) btnCmdF4.addEventListener('click', () => openProductCostModal());
+
+    const btnCmdF2 = document.getElementById('btnCmdF2');
+    if (btnCmdF2) btnCmdF2.addEventListener('click', () => openProductSalesHistoryModal());
+
+    const btnCmdCtrlDel = document.getElementById('btnCmdCtrlDel');
+    if (btnCmdCtrlDel) btnCmdCtrlDel.addEventListener('click', deleteActiveOrLastCartItem);
+
+    // ربط نقر شبكة أزرار الاختصارات التفاعلية أسفل السلة
     const shortcutF12 = document.getElementById('shortcutF12Btn');
     if (shortcutF12) shortcutF12.addEventListener('click', startPosInlineCodeEntry);
 
@@ -3830,14 +3846,47 @@
       });
     }
 
-    // أحداث السلة (تحديد الصنف النشط، زيادة، نقص، حذف)
+    // أحداث السلة (تحديد الصنف النشط، أزرار الأدوات، زيادة، نقص، حذف)
     const cartTbody = document.getElementById('posCartTableBody');
     if (cartTbody) {
       cartTbody.addEventListener('click', (e) => {
         const incBtn = e.target.closest('[data-cart-action="inc"]');
         const decBtn = e.target.closest('[data-cart-action="dec"]');
         const delBtn = e.target.closest('[data-cart-action="del"]');
+        const inspectBtn = e.target.closest('[data-cart-action="inspect-prod"]');
+        const costBtn = e.target.closest('[data-cart-action="cost-prod"]');
+        const histBtn = e.target.closest('[data-cart-action="history-prod"]');
         const row = e.target.closest('tr[data-cart-row-id]');
+
+        if (inspectBtn) {
+          const id = inspectBtn.getAttribute('data-id');
+          const item = appState.posCart.find(i => i.id === id);
+          if (item) {
+            appState.activeCartItemId = item.id;
+            openProductDetailsModal();
+          }
+          return;
+        }
+
+        if (costBtn) {
+          const id = costBtn.getAttribute('data-id');
+          const item = appState.posCart.find(i => i.id === id);
+          if (item) {
+            appState.activeCartItemId = item.id;
+            openProductCostModal();
+          }
+          return;
+        }
+
+        if (histBtn) {
+          const id = histBtn.getAttribute('data-id');
+          const item = appState.posCart.find(i => i.id === id);
+          if (item) {
+            appState.activeCartItemId = item.id;
+            openProductSalesHistoryModal();
+          }
+          return;
+        }
 
         if (incBtn) {
           const id = incBtn.getAttribute('data-id');
@@ -4235,8 +4284,23 @@
       return `
         <tr class="${isActive ? 'is-active-row' : ''}" data-cart-row-id="${item.id}" title="انقر لتحديد الصنف واستخدام الاختصارات">
           <td>
-            <div style="font-weight:700; font-size:0.84rem; color:var(--ab-text-main);">${escapeHtml(item.name)}</div>
-            <code class="cell-code text-ltr" style="font-size:0.75rem; color:var(--ab-cyan); font-weight:800;">#${escapeHtml(item.code)}</code>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.35rem;">
+              <div>
+                <div style="font-weight:700; font-size:0.84rem; color:var(--ab-text-main);">${escapeHtml(item.name)}</div>
+                <code class="cell-code text-ltr" style="font-size:0.75rem; color:var(--ab-cyan); font-weight:800;">#${escapeHtml(item.code)}</code>
+              </div>
+              <div style="display:flex; gap:0.2rem; margin-top:0.1rem;" class="cart-row-tools">
+                <button type="button" class="btn-cell-tool" data-cart-action="inspect-prod" data-id="${item.id}" title="عرض تفاصيل الصنف (F5)" style="padding:0.15rem 0.35rem; font-size:0.72rem;">
+                  <i class="fa-solid fa-circle-info" style="color:#a5b4fc;"></i>
+                </button>
+                <button type="button" class="btn-cell-tool" data-cart-action="cost-prod" data-id="${item.id}" title="عرض تكلفة الصنف (F4)" style="padding:0.15rem 0.35rem; font-size:0.72rem;">
+                  <i class="fa-solid fa-sack-dollar" style="color:#fbbf24;"></i>
+                </button>
+                <button type="button" class="btn-cell-tool" data-cart-action="history-prod" data-id="${item.id}" title="عرض حركات بيع الصنف (F2)" style="padding:0.15rem 0.35rem; font-size:0.72rem;">
+                  <i class="fa-solid fa-clock-rotate-left" style="color:#2dd4bf;"></i>
+                </button>
+              </div>
+            </div>
           </td>
           <td style="text-align:center; font-family:var(--font-latin); font-weight:700; color:var(--ab-cyan);">
             ${item.salePrice.toFixed(2)}

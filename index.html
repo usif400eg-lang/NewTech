@@ -608,6 +608,35 @@
               </div>
             </div>
 
+            <!-- شريط أزرار الإجراءات السريعة فوق الفاتورة (F12, F5, F4, F2, Del) -->
+            <div class="pos-cart-quick-toolbar">
+              <button type="button" class="pos-btn-cmd pos-cmd-primary" id="btnCmdF12" title="إضافة سطر جديد لإدخال كود الصنف (F12)">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>سطر جديد</span>
+                <span class="cmd-key">F12</span>
+              </button>
+              <button type="button" class="pos-btn-cmd pos-cmd-info" id="btnCmdF5" title="عرض كافة بيانات وتفاصيل الصنف (F5)">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>بيانات المنتج</span>
+                <span class="cmd-key">F5</span>
+              </button>
+              <button type="button" class="pos-btn-cmd pos-cmd-warning" id="btnCmdF4" title="عرض تكلفة الصنف وسعر الشراء (F4)">
+                <i class="fa-solid fa-sack-dollar"></i>
+                <span>تكلفتي</span>
+                <span class="cmd-key">F4</span>
+              </button>
+              <button type="button" class="pos-btn-cmd pos-cmd-cyan" id="btnCmdF2" title="عرض كل حركات بيع الصنف بالتاريخ والوقت (F2)">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>حركات البيع</span>
+                <span class="cmd-key">F2</span>
+              </button>
+              <button type="button" class="pos-btn-cmd pos-cmd-danger" id="btnCmdCtrlDel" title="حذف الصنف المحدد من شاشة البيع (Ctrl+Del)">
+                <i class="fa-solid fa-trash-can"></i>
+                <span>حذف صنف</span>
+                <span class="cmd-key">Del</span>
+              </button>
+            </div>
+
             <!-- جدول محتويات الفاتورة -->
             <div class="pos-cart-table-wrapper">
               <table class="pos-cart-table">
@@ -680,14 +709,32 @@
                 </button>
               </div>
 
-              <!-- شريط مفاتيح الاختصارات السريعة للكاشير -->
-              <div class="pos-shortcuts-bar">
-                <div class="pos-shortcut-badge" id="shortcutF12Btn" title="إضافة سطر جديد لإدخال كود الصنف"><kbd>F12</kbd> <span>سطر جديد</span></div>
-                <div class="pos-shortcut-badge" id="shortcutF5Btn" title="عرض كافة بيانات وتفاصيل الصنف"><kbd>F5</kbd> <span>بيانات المنتج</span></div>
-                <div class="pos-shortcut-badge" id="shortcutF4Btn" title="عرض تكلفة الصنف وسعر الشراء"><kbd>F4</kbd> <span>تكلفتي</span></div>
-                <div class="pos-shortcut-badge" id="shortcutF2Btn" title="عرض كل حركات بيع الصنف بالتاريخ والوقت"><kbd>F2</kbd> <span>حركات البيع</span></div>
-                <div class="pos-shortcut-badge" id="shortcutCtrlDelBtn" title="حذف الصنف المحدد من شاشة البيع"><kbd>Ctrl+Del</kbd> <span>حذف منتج</span></div>
-                <div class="pos-shortcut-badge highlight" id="shortcutCtrlF10Btn" title="حفظ الفاتورة وإتمام البيع والطباعة"><kbd>Ctrl+F10</kbd> <span>حفظ الفاتورة</span></div>
+              <!-- شبكة أزرار الاختصارات والإجراءات التفاعلية للكاشير -->
+              <div class="pos-shortcuts-buttons-grid">
+                <button type="button" class="pos-grid-btn" id="shortcutF12Btn" title="إضافة سطر جديد لإدخال كود الصنف">
+                  <span class="key-badge">F12</span>
+                  <span class="label"><i class="fa-solid fa-plus-circle" style="color:var(--ab-cyan);"></i> سطر جديد</span>
+                </button>
+                <button type="button" class="pos-grid-btn" id="shortcutF5Btn" title="عرض كافة بيانات وتفاصيل الصنف">
+                  <span class="key-badge">F5</span>
+                  <span class="label"><i class="fa-solid fa-circle-info" style="color:#a5b4fc;"></i> بيانات المنتج</span>
+                </button>
+                <button type="button" class="pos-grid-btn" id="shortcutF4Btn" title="عرض تكلفة الصنف وسعر الشراء">
+                  <span class="key-badge">F4</span>
+                  <span class="label"><i class="fa-solid fa-sack-dollar" style="color:#fbbf24;"></i> تكلفتي</span>
+                </button>
+                <button type="button" class="pos-grid-btn" id="shortcutF2Btn" title="عرض كل حركات بيع الصنف بالتاريخ والوقت">
+                  <span class="key-badge">F2</span>
+                  <span class="label"><i class="fa-solid fa-clock-rotate-left" style="color:#2dd4bf;"></i> حركات البيع</span>
+                </button>
+                <button type="button" class="pos-grid-btn danger" id="shortcutCtrlDelBtn" title="حذف الصنف المحدد من شاشة البيع">
+                  <span class="key-badge">Ctrl+Del</span>
+                  <span class="label"><i class="fa-solid fa-trash-can"></i> حذف منتج</span>
+                </button>
+                <button type="button" class="pos-grid-btn success" id="shortcutCtrlF10Btn" title="حفظ الفاتورة وإتمام البيع والطباعة">
+                  <span class="key-badge">Ctrl+F10</span>
+                  <span class="label"><i class="fa-solid fa-check-double"></i> حفظ الفاتورة</span>
+                </button>
               </div>
             </div>
           </div>
