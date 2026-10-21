@@ -19,6 +19,8 @@
     VOUCHERS: 'newtech_vouchers',
     EXPENSES: 'newtech_expenses',
     PRODUCTS: 'newtech_products',
+    SALES: 'newtech_sales',
+    PAYOUTS: 'newtech_payouts',
     CURRENT_USER: 'newtech_active_user_v3',
     CLOUD_CONFIG: 'newtech_cloud_config_v3'
   };
@@ -32,6 +34,12 @@
     vouchers: [],        // سندات القبض والصرف
     expenses: [],        // المصروفات العامة والنثريات
     products: [],        // المخزن والأصناف
+    sales: [],           // فواتير مبيعات الكاشير POS
+    payouts: [],         // أذونات صرف نقدية من الدرج
+    posCart: [],         // سلة مشتريات الكاشير الحالية
+    activeView: 'POS',   // 'POS' | 'REGISTER'
+    posCategory: 'ALL',
+    posSearch: '',
     users: [],
     currentUser: null,   // المستخدم النشط
     filters: {
@@ -759,6 +767,14 @@
         // 6. الأصناف والمخزون
         const dbProducts = await window.newTechDB.getAllProducts(userId);
         appState.products = dbProducts || [];
+
+        // 7. مبيعات الكاشير POS
+        const dbSales = await window.newTechDB.getAllSales(userId);
+        appState.sales = dbSales || [];
+
+        // 8. صرف نقدية الدرج
+        const dbPayouts = await window.newTechDB.getAllPayouts(userId);
+        appState.payouts = dbPayouts || [];
       }
     } catch (e) {
       console.warn('Fallback to LocalStorage cache:', e);
@@ -774,6 +790,10 @@
       appState.expenses = savedExp ? JSON.parse(savedExp) : [];
       const savedProd = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       appState.products = savedProd ? JSON.parse(savedProd) : [];
+      const savedSales = localStorage.getItem(STORAGE_KEYS.SALES);
+      appState.sales = savedSales ? JSON.parse(savedSales) : [];
+      const savedPayouts = localStorage.getItem(STORAGE_KEYS.PAYOUTS);
+      appState.payouts = savedPayouts ? JSON.parse(savedPayouts) : [];
     }
 
     syncLocalStorageCache();
@@ -787,6 +807,8 @@
       localStorage.setItem(STORAGE_KEYS.VOUCHERS, JSON.stringify(appState.vouchers || []));
       localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(appState.expenses || []));
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(appState.products || []));
+      localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(appState.sales || []));
+      localStorage.setItem(STORAGE_KEYS.PAYOUTS, JSON.stringify(appState.payouts || []));
     } catch (e) {}
   }
 
@@ -962,8 +984,17 @@
     const totalExpenses = (appState.expenses || [])
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    // رصيد الكاش في الخزينة: مقبوضات المبيعات + سندات القبض - مدفوعات المشتريات - سندات الصرف - المصروفات
-    const cashInDrawer = Math.max(0, (paidTotal + vReceiptsCash) - (totalPurchasesPaid + vPaymentsCash + expCash));
+    // مبيعات الكاشير POS النقدية
+    const posCashSales = (appState.sales || [])
+      .filter(s => !s.paymentMethod || s.paymentMethod.includes('كاش'))
+      .reduce((sum, s) => sum + (Number(s.grandTotal) || 0), 0);
+
+    // أذونات صرف نقدية من الدرج
+    const drawerPayoutsCash = (appState.payouts || [])
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    // رصيد الكاش في الخزينة: مقبوضات المبيعات + كاشير POS + سندات القبض - مدفوعات المشتريات - سندات الصرف - المصروفات - صرف نقدية الدرج
+    const cashInDrawer = Math.max(0, (paidTotal + vReceiptsCash + posCashSales) - (totalPurchasesPaid + vPaymentsCash + expCash + drawerPayoutsCash));
 
     // تحديث الأرقام العلوية
     const unpaidEl = document.getElementById('statUnpaidAmount');
@@ -1320,14 +1351,16 @@
         const invoiceDate = document.getElementById('purchaseDateInput').value;
         const notes = document.getElementById('purchaseNotesInput').value.trim();
 
-        // تجميع البنود
+        // تجميع البنود مع الكود الرقمي والتصنيف وسعر الشراء وسعر البيع
         const rowEls = itemsTbody.querySelectorAll('tr');
         const items = [];
         rowEls.forEach(tr => {
           const name = tr.querySelector('.row-item-name').value.trim();
-          const code = tr.querySelector('.row-item-code').value.trim();
+          const code = tr.querySelector('.row-item-code') ? tr.querySelector('.row-item-code').value.trim() : '';
+          const cat = tr.querySelector('.row-item-cat') ? tr.querySelector('.row-item-cat').value : 'عام';
           const qty = parseFloat(tr.querySelector('.row-item-qty').value) || 1;
           const price = parseFloat(tr.querySelector('.row-item-price').value) || 0;
+          const sellPrice = parseFloat(tr.querySelector('.row-item-sell-price') ? tr.querySelector('.row-item-sell-price').value : 0) || Math.round(price * 1.25);
           const disc = parseFloat(tr.querySelector('.row-item-discount').value) || 0;
           const finalPrice = Math.max(0, (qty * price) - disc);
 
@@ -1336,8 +1369,10 @@
               id: 'pitem_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
               itemName: name,
               itemCode: code,
+              category: cat,
               quantity: qty,
               unitPrice: price,
+              sellPrice: sellPrice,
               discount: disc,
               finalPrice: finalPrice
             });
@@ -1382,23 +1417,26 @@
         appState.purchases.unshift(newInvoice);
         if (window.newTechDB) await window.newTechDB.savePurchase(newInvoice);
 
-        // تحديث رصيد المخزن تلقائياً لكل صنف وارد في فاتورة المشتريات
+        // تحديث رصيد المخزن تلقائياً وتسجيل الصنف وسعر تكلفته وسعر بيعه وكوده الرقمي وتصنيفه
         for (const pItem of items) {
-          let matchedProd = (appState.products || []).find(p => (pItem.itemCode && p.code === pItem.itemCode) || (p.name && p.name.toLowerCase() === pItem.itemName.toLowerCase()));
+          let matchedProd = (appState.products || []).find(p => (pItem.itemCode && String(p.code) === String(pItem.itemCode)) || (p.name && p.name.toLowerCase() === pItem.itemName.toLowerCase()));
           if (matchedProd) {
             matchedProd.stock = (parseFloat(matchedProd.stock) || 0) + (parseFloat(pItem.quantity) || 1);
             if (pItem.unitPrice > 0) matchedProd.costPrice = pItem.unitPrice;
+            if (pItem.sellPrice > 0) matchedProd.salePrice = pItem.sellPrice;
+            if (pItem.category) matchedProd.category = pItem.category;
+            if (pItem.itemCode) matchedProd.code = pItem.itemCode;
             matchedProd.updatedAt = new Date().toISOString();
             if (window.newTechDB) await window.newTechDB.saveProduct(matchedProd);
           } else {
             const newProd = {
               id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-              code: pItem.itemCode || ('NT-' + Math.floor(100 + Math.random() * 900)),
+              code: pItem.itemCode || String(Math.floor(100 + Math.random() * 900)),
               name: pItem.itemName,
-              category: 'بضائع مشتريات',
+              category: pItem.category || 'عام',
               unit: 'قطعة',
               costPrice: pItem.unitPrice || 0,
-              salePrice: Math.round((pItem.unitPrice || 0) * 1.25),
+              salePrice: pItem.sellPrice || Math.round((pItem.unitPrice || 0) * 1.25),
               stock: parseFloat(pItem.quantity) || 1,
               minStock: 3,
               notes: `وارد من فاتورة مشتريات ${invoiceNumber}`,
@@ -1414,7 +1452,7 @@
         closeModal('newPurchaseModal');
         renderAll();
         playSoundAdd();
-        showToast(`✅ تم حفظ فاتورة المشتريات ${invoiceNumber} وتحديث رصيد المخزن والمقاصة!`);
+        showToast(`✅ تم حفظ فاتورة المشتريات ${invoiceNumber} وتحديث كروت الأصناف في نقطة البيع والمخزن!`);
       });
     }
   }
@@ -1424,21 +1462,46 @@
     const tbody = document.getElementById('purchaseItemsTableBody');
     if (!tbody) return;
 
+    // توليد كود رقمي عشوائي مقترح للصنف
+    const nextNumericCode = Math.floor(100 + Math.random() * 900);
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="text" class="row-item-name" placeholder="اسم الصنف المشتَرى..." required></td>
-      <td><input type="text" class="row-item-code text-ltr" placeholder="الكود"></td>
-      <td><input type="number" class="row-item-qty" value="1" min="1" step="1" style="text-align:center;"></td>
-      <td><input type="number" class="row-item-price" placeholder="0.00" min="0" step="0.5" required></td>
-      <td><input type="number" class="row-item-discount" value="0" min="0" step="0.5"></td>
+      <td><input type="number" class="row-item-code text-ltr" value="${nextNumericCode}" placeholder="كود رقمي" required style="width:85px; text-align:center;"></td>
+      <td>
+        <select class="row-item-cat form-control" style="font-size:0.8rem; padding:0.2rem 0.4rem; background:var(--ab-bg-input); color:var(--ab-text-main); border:1px solid var(--ab-border);">
+          <option value="شواحن ومحولات">شواحن ومحولات</option>
+          <option value="كابلات ووصلات">كابلات ووصلات</option>
+          <option value="شاشات وقطع غيار">شاشات وقطع غيار</option>
+          <option value="هاردات ورامات">هاردات ورامات</option>
+          <option value="ملحقات وإكسسوارات">ملحقات وإكسسوارات</option>
+          <option value="صيانة ومستهلكات">صيانة ومستهلكات</option>
+          <option value="عام" selected>عام</option>
+        </select>
+      </td>
+      <td><input type="number" class="row-item-qty" value="1" min="1" step="1" style="text-align:center; width:65px;"></td>
+      <td><input type="number" class="row-item-price" placeholder="سعر الشراء" min="0" step="0.5" required style="width:90px;"></td>
+      <td><input type="number" class="row-item-sell-price" placeholder="سعر البيع" min="0" step="0.5" required style="width:90px; color:#10b981; font-weight:700;"></td>
+      <td><input type="number" class="row-item-discount" value="0" min="0" step="0.5" style="width:70px;"></td>
       <td><strong class="row-final-price" style="font-family:var(--font-latin); color:var(--ab-cyan);">0.00 ج.م</strong></td>
       <td style="text-align:center;">
         <button type="button" class="btn-cell-tool del remove-row-btn" title="حذف هذا الصنف"><i class="fa-solid fa-xmark"></i></button>
       </td>
     `;
 
+    // اقتراح سعر بيع تلقائي بهامش ربح 25% عند كتابة سعر التكلفة إن لم يكن محدداً
+    const costInp = tr.querySelector('.row-item-price');
+    const sellInp = tr.querySelector('.row-item-sell-price');
+    costInp.addEventListener('input', () => {
+      const c = parseFloat(costInp.value) || 0;
+      if (!sellInp.value || parseFloat(sellInp.value) === 0) {
+        sellInp.value = Math.round(c * 1.25);
+      }
+    });
+
     // ربط الحسابات
-    const inputs = tr.querySelectorAll('input');
+    const inputs = tr.querySelectorAll('input, select');
     inputs.forEach(inp => {
       inp.addEventListener('input', () => {
         recalcRowFinal(tr);
@@ -3130,7 +3193,51 @@
       }
     });
 
-    const netCashInDrawer = (paidSalesCashTotal + voucherReceiptCashTotal) - (paidPurchasesCashTotal + voucherPaymentCashTotal + expensesCashTotal);
+    // 5. POS Sales (مبيعات الكاشير)
+    (appState.sales || []).forEach(s => {
+      const isCash = !s.paymentMethod || s.paymentMethod.includes('كاش');
+      const val = parseFloat(s.grandTotal) || 0;
+      if (isCash && val > 0) {
+        paidSalesCashTotal += val;
+        const sDate = (s.createdAt || '').slice(0, 10);
+        if (sDate === todayStr) {
+          todayIn += val;
+        }
+        logEntries.push({
+          date: s.createdAt || s.date,
+          timestamp: new Date(s.createdAt || Date.now()).getTime(),
+          type: 'pos_sale',
+          label: 'إيراد مبيعات كاشير POS',
+          entity: `${s.invoiceNumber} (${s.customerName || 'عميل نقدي'})`,
+          amount: val,
+          direction: 'in'
+        });
+      }
+    });
+
+    // 6. Drawer Payouts (صرف نقدية الدرج)
+    (appState.payouts || []).forEach(p => {
+      const amt = parseFloat(p.amount) || 0;
+      if (amt > 0) {
+        expensesCashTotal += amt;
+        const pDate = (p.createdAt || '').slice(0, 10);
+        if (pDate === todayStr) {
+          todayOut += amt;
+          todayExpenses += amt;
+        }
+        logEntries.push({
+          date: p.createdAt || p.date,
+          timestamp: new Date(p.createdAt || Date.now()).getTime(),
+          type: 'payout',
+          label: `صرف نقدية درج: ${p.category}`,
+          entity: `${p.recipient} - ${p.notes}`,
+          amount: amt,
+          direction: 'out'
+        });
+      }
+    });
+
+    const netCashInDrawer = Math.max(0, (paidSalesCashTotal + voucherReceiptCashTotal) - (paidPurchasesCashTotal + voucherPaymentCashTotal + expensesCashTotal));
 
     // تحديث كروت الإحصائيات
     const curCashEl = document.getElementById('treasuryCurrentCashVal');
@@ -3163,7 +3270,7 @@
               <td>${escapeHtml(entry.entity)}</td>
               <td style="font-family:var(--font-latin); font-weight:700; color:#10b981;">${isIn ? `+${Number(entry.amount).toFixed(2)} ج.م` : '-'}</td>
               <td style="font-family:var(--font-latin); font-weight:700; color:var(--ab-unpaid);">${!isIn ? `-${Number(entry.amount).toFixed(2)} ج.م` : '-'}</td>
-              <td><small style="color:var(--ab-cyan);">كاش الخزينة</small></td>
+              <td><small style="color:var(--ab-cyan);">كاش الخزينة والدرج</small></td>
             </tr>
           `;
         }).join('');
@@ -3183,6 +3290,7 @@
     let expenses = 0;
     let purchases = 0;
 
+    // مبيعات المسحوبات
     appState.items.forEach(it => {
       const itDate = (it.createdAt || '').slice(0, 10);
       if (itDate === todayStr && !it.isReturned) {
@@ -3190,6 +3298,20 @@
         totalSales += val;
         if (it.isPaid) cashSales += val;
         else creditSales += val;
+      }
+    });
+
+    // مبيعات الكاشير POS
+    (appState.sales || []).forEach(s => {
+      const sDate = (s.createdAt || '').slice(0, 10);
+      if (sDate === todayStr) {
+        const val = parseFloat(s.grandTotal) || 0;
+        totalSales += val;
+        if (!s.paymentMethod || s.paymentMethod.includes('كاش')) {
+          cashSales += val;
+        } else {
+          creditSales += val;
+        }
       }
     });
 
@@ -3207,6 +3329,14 @@
       }
     });
 
+    // صرف نقدية الدرج
+    (appState.payouts || []).forEach(p => {
+      const pDate = (p.createdAt || '').slice(0, 10);
+      if (pDate === todayStr) {
+        expenses += (parseFloat(p.amount) || 0);
+      }
+    });
+
     appState.purchases.forEach(pu => {
       const puDate = pu.invoiceDate || (pu.createdAt || '').slice(0, 10);
       if (puDate === todayStr && !pu.isReturned) {
@@ -3216,6 +3346,7 @@
 
     let totalCashDrawer = 0;
     appState.items.forEach(it => { if (it.isPaid && !it.isReturned) totalCashDrawer += (parseFloat(it.totalPrice) || 0); });
+    (appState.sales || []).forEach(s => { if (!s.paymentMethod || s.paymentMethod.includes('كاش')) totalCashDrawer += (parseFloat(s.grandTotal) || 0); });
     (appState.vouchers || []).forEach(v => {
       if ((v.paymentMethod || '').includes('كاش')) {
         if (v.type === 'receipt') totalCashDrawer += (parseFloat(v.amount) || 0);
@@ -3225,6 +3356,9 @@
     appState.purchases.forEach(pu => { if (!pu.isReturned) totalCashDrawer -= (parseFloat(pu.paidAmount) || 0); });
     (appState.expenses || []).forEach(x => {
       if ((x.paymentMethod || '').includes('كاش')) totalCashDrawer -= (parseFloat(x.amount) || 0);
+    });
+    (appState.payouts || []).forEach(p => {
+      totalCashDrawer -= (parseFloat(p.amount) || 0);
     });
 
     document.getElementById('reportCloseDateText').textContent = `التاريخ: ${formatDateStr(new Date())}`;
@@ -3471,7 +3605,832 @@
   }
 
   // ==========================================================================
-  // 21. تحديث كافة عناصر الواجهة (Render All)
+  // 21. شاشة التبديل بين الكاشير (POS) وسجل المسحوبات المركزي
+  // ==========================================================================
+  function setupViewSwitcher() {
+    const btnSwitchPOS = document.getElementById('btnSwitchToPOS');
+    const btnSwitchReg = document.getElementById('btnSwitchToRegister');
+    const menuPOS = document.getElementById('menuPOS');
+    const menuRegister = document.getElementById('menuRegister');
+    const posContainer = document.getElementById('posViewContainer');
+    const classicView = document.getElementById('classicTableView');
+
+    function switchToPOS() {
+      appState.activeView = 'POS';
+      if (posContainer) posContainer.style.display = 'flex';
+      if (classicView) classicView.style.display = 'none';
+      if (btnSwitchPOS) btnSwitchPOS.classList.add('active');
+      if (btnSwitchReg) btnSwitchReg.classList.remove('active');
+      renderPOSCatalog();
+      renderPOSCart();
+      const scanInp = document.getElementById('posBarcodeScanInput');
+      if (scanInp) scanInp.focus();
+    }
+
+    function switchToRegister() {
+      appState.activeView = 'REGISTER';
+      if (posContainer) posContainer.style.display = 'none';
+      if (classicView) classicView.style.display = 'flex';
+      if (btnSwitchReg) btnSwitchReg.classList.add('active');
+      if (btnSwitchPOS) btnSwitchPOS.classList.remove('active');
+      renderStructuredTableRows();
+      updateMetricsAndBadges();
+    }
+
+    if (btnSwitchPOS) btnSwitchPOS.addEventListener('click', switchToPOS);
+    if (btnSwitchReg) btnSwitchReg.addEventListener('click', switchToRegister);
+    if (menuPOS) menuPOS.addEventListener('click', switchToPOS);
+    if (menuRegister) menuRegister.addEventListener('click', switchToRegister);
+
+    // الوضع الافتراضي للواجهة الرئيسية: نقطة البيع POS
+    switchToPOS();
+  }
+
+  // ==========================================================================
+  // 22. نقطة البيع السحابية والكاشير (POS System Engine)
+  // ==========================================================================
+  function setupPOS() {
+    const scanInput = document.getElementById('posBarcodeScanInput');
+    const quickAddBtn = document.getElementById('btnPosQuickAdd');
+    const discountInput = document.getElementById('posDiscountInput');
+    const paidInput = document.getElementById('posPaidInput');
+    const checkoutBtn = document.getElementById('posCheckoutBtn');
+    const clearCartBtn = document.getElementById('posClearCartBtn');
+
+    // تصفية الكاتالوج بحسب الأقسام
+    document.querySelectorAll('.pos-cat-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.pos-cat-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        appState.posCategory = pill.getAttribute('data-cat') || 'ALL';
+        renderPOSCatalog();
+      });
+    });
+
+    // مسح الباركود أو الكود الرقمي أو البحث الفوري
+    if (scanInput) {
+      scanInput.addEventListener('input', (e) => {
+        appState.posSearch = e.target.value.trim().toLowerCase();
+        renderPOSCatalog();
+      });
+
+      scanInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const query = scanInput.value.trim();
+          if (!query) return;
+
+          // البحث أولاً بالكود الدقيق (سواء رقم أو كود)
+          let match = (appState.products || []).find(p => String(p.code).trim().toLowerCase() === query.toLowerCase());
+          if (!match) {
+            match = (appState.products || []).find(p => (p.name || '').toLowerCase().includes(query.toLowerCase()));
+          }
+
+          if (match) {
+            addToCart(match);
+            scanInput.value = '';
+            appState.posSearch = '';
+            renderPOSCatalog();
+          } else {
+            showToast(`⚠️ لم يتم العثور على صنف بالرمز أو الاسم (${query})`);
+          }
+        }
+      });
+    }
+
+    // زر إضافة صنف حر سريع للسلة مباشرة
+    if (quickAddBtn) {
+      quickAddBtn.addEventListener('click', () => {
+        const name = prompt('أدخل اسم الصنف أو الخدمة السريعة:');
+        if (!name) return;
+        const priceStr = prompt('أدخل سعر البيع (ج.م):', '50');
+        const price = parseFloat(priceStr) || 0;
+        if (price <= 0) return;
+
+        const quickItem = {
+          id: 'quick_' + Date.now(),
+          code: String(Math.floor(100 + Math.random() * 900)),
+          name: name.trim(),
+          category: 'عام',
+          costPrice: 0,
+          salePrice: price,
+          stock: 999
+        };
+        addToCart(quickItem);
+      });
+    }
+
+    // تعديل الخصم والمدفوع
+    if (discountInput) {
+      discountInput.addEventListener('input', recalcPOSCartTotals);
+    }
+    if (paidInput) {
+      paidInput.addEventListener('input', recalcPOSCartTotals);
+    }
+
+    // تفريغ الفاتورة
+    if (clearCartBtn) {
+      clearCartBtn.addEventListener('click', () => {
+        if (appState.posCart.length === 0) return;
+        if (confirm('هل أنت متأكد من إلغاء الفاتورة الحالية وتفريغ السلة؟')) {
+          appState.posCart = [];
+          renderPOSCart();
+          playSoundUnpay();
+          showToast('تم تفريغ الفاتورة');
+        }
+      });
+    }
+
+    // إتمام البيع
+    if (checkoutBtn) {
+      checkoutBtn.addEventListener('click', checkoutPOS);
+    }
+
+    // اختصار F9 لإتمام البيع فوراً
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F9') {
+        e.preventDefault();
+        checkoutPOS();
+      }
+    });
+
+    // أحداث السلة (زيادة، نقص، حذف)
+    const cartTbody = document.getElementById('posCartTableBody');
+    if (cartTbody) {
+      cartTbody.addEventListener('click', (e) => {
+        const incBtn = e.target.closest('[data-cart-action="inc"]');
+        const decBtn = e.target.closest('[data-cart-action="dec"]');
+        const delBtn = e.target.closest('[data-cart-action="del"]');
+
+        if (incBtn) {
+          const id = incBtn.getAttribute('data-id');
+          const item = appState.posCart.find(i => i.id === id);
+          if (item) {
+            item.qty += 1;
+            renderPOSCart();
+            playSoundAdd();
+          }
+          return;
+        }
+
+        if (decBtn) {
+          const id = decBtn.getAttribute('data-id');
+          const item = appState.posCart.find(i => i.id === id);
+          if (item) {
+            if (item.qty > 1) {
+              item.qty -= 1;
+            } else {
+              appState.posCart = appState.posCart.filter(i => i.id !== id);
+            }
+            renderPOSCart();
+            playSoundUnpay();
+          }
+          return;
+        }
+
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-id');
+          appState.posCart = appState.posCart.filter(i => i.id !== id);
+          renderPOSCart();
+          playSoundDelete();
+          return;
+        }
+      });
+    }
+
+    // ربط الأزرار السريعة لفتح النوافذ من شاشة POS
+    const posOpenPayoutBtn = document.getElementById('posOpenPayoutBtn');
+    if (posOpenPayoutBtn) posOpenPayoutBtn.addEventListener('click', () => openModal('drawerPayoutModal'));
+
+    const posOpenStockBtn = document.getElementById('posOpenStockBtn');
+    if (posOpenStockBtn) posOpenStockBtn.addEventListener('click', () => { renderStockAuditSheet(); openModal('stocktakingModal'); });
+
+    const posSalesHistoryBtn = document.getElementById('posSalesHistoryBtn');
+    if (posSalesHistoryBtn) posSalesHistoryBtn.addEventListener('click', () => { renderSalesHistoryTable(); openModal('salesHistoryModal'); });
+  }
+
+  function addToCart(prod) {
+    const existing = appState.posCart.find(i => i.productId === prod.id || (i.code && String(i.code) === String(prod.code) && i.name === prod.name));
+    if (existing) {
+      existing.qty += 1;
+    } else {
+      appState.posCart.push({
+        id: 'cart_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+        productId: prod.id,
+        code: prod.code || '',
+        name: prod.name,
+        category: prod.category || 'عام',
+        costPrice: Number(prod.costPrice) || 0,
+        salePrice: Number(prod.salePrice) || Number(prod.costPrice) || 0,
+        qty: 1
+      });
+    }
+    renderPOSCart();
+    playSoundAdd();
+  }
+
+  function renderPOSCatalog() {
+    const grid = document.getElementById('posProductsGrid');
+    const countEl = document.getElementById('posCatalogItemsCount');
+    if (!grid) return;
+
+    let prods = appState.products || [];
+
+    // فلتر الكاتجوري
+    if (appState.posCategory && appState.posCategory !== 'ALL') {
+      prods = prods.filter(p => p.category === appState.posCategory);
+    }
+
+    // فلتر البحث
+    if (appState.posSearch) {
+      const q = appState.posSearch;
+      prods = prods.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        String(p.code || '').toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q)
+      );
+    }
+
+    if (countEl) countEl.textContent = `${prods.length} صنف متاح`;
+
+    if (prods.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align:center; padding:3rem; color:var(--ab-text-dim);">
+          <i class="fa-solid fa-box-open" style="font-size:2.5rem; display:block; margin-bottom:0.75rem; opacity:0.3;"></i>
+          لا توجد أصناف مسجلة في هذا القسم. أضف أصنافاً جديدة عبر فاتورة مشتريات أو كارت المخزن.
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = prods.map(p => {
+      const isLow = (parseFloat(p.stock) || 0) <= (parseFloat(p.minStock) || 3);
+      const isOut = (parseFloat(p.stock) || 0) <= 0;
+      return `
+        <div class="pos-product-card ${isOut ? 'out-of-stock' : ''}" data-product-id="${p.id}">
+          <div class="card-cat-badge">${escapeHtml(p.category || 'عام')}</div>
+          <div class="card-prod-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+          <div class="card-prod-code"><i class="fa-solid fa-barcode"></i> كود: ${escapeHtml(p.code)}</div>
+          <div class="card-bottom-row">
+            <div class="card-price">${Number(p.salePrice || p.costPrice || 0).toFixed(2)} <span style="font-size:0.75rem;">ج.م</span></div>
+            <div class="card-stock ${isLow ? 'low' : ''}">${isOut ? 'نفد' : 'متاح: ' + p.stock}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('.pos-product-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const pId = card.getAttribute('data-product-id');
+        const prod = (appState.products || []).find(p => p.id === pId);
+        if (prod) addToCart(prod);
+      });
+    });
+  }
+
+  function renderPOSCart() {
+    const tbody = document.getElementById('posCartTableBody');
+    const numDisplay = document.getElementById('posInvoiceNumDisplay');
+    const dateDisplay = document.getElementById('posInvoiceDateDisplay');
+
+    if (numDisplay && !numDisplay.hasAttribute('data-active-num')) {
+      const invNum = 'INV-' + Math.floor(1000 + Math.random() * 9000);
+      numDisplay.setAttribute('data-active-num', invNum);
+      numDisplay.textContent = `فاتورة مبيعات #${invNum}`;
+    }
+
+    if (dateDisplay) {
+      dateDisplay.textContent = `${formatDateStr(new Date())} - ${formatTimeStr(new Date())}`;
+    }
+
+    if (!tbody) return;
+
+    if (appState.posCart.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center; padding:2.5rem 1rem; color:var(--ab-text-dim);">
+            <i class="fa-solid fa-cart-shopping" style="font-size:2rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>
+            الفاتورة فارغة.. امسح الباركود أو انقر على صنف من القائمة لإضافته
+          </td>
+        </tr>
+      `;
+      recalcPOSCartTotals();
+      return;
+    }
+
+    tbody.innerHTML = appState.posCart.map(item => {
+      const lineTotal = item.qty * item.salePrice;
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700; font-size:0.84rem; color:var(--ab-text-main);">${escapeHtml(item.name)}</div>
+            <code class="cell-code text-ltr" style="font-size:0.7rem; color:var(--ab-text-dim);">${escapeHtml(item.code)}</code>
+          </td>
+          <td style="text-align:center; font-family:var(--font-latin); font-weight:700; color:var(--ab-cyan);">
+            ${item.salePrice.toFixed(2)}
+          </td>
+          <td style="text-align:center;">
+            <div class="pos-qty-stepper">
+              <button type="button" class="btn-step" data-cart-action="dec" data-id="${item.id}">-</button>
+              <span class="qty-num">${item.qty}</span>
+              <button type="button" class="btn-step" data-cart-action="inc" data-id="${item.id}">+</button>
+            </div>
+          </td>
+          <td style="text-align:left; font-family:var(--font-latin); font-weight:800; color:#10b981;">
+            ${lineTotal.toFixed(2)}
+          </td>
+          <td style="text-align:center;">
+            <button type="button" class="btn-cell-tool del" data-cart-action="del" data-id="${item.id}" title="حذف الصنف">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    recalcPOSCartTotals();
+  }
+
+  function recalcPOSCartTotals() {
+    const subtotalEl = document.getElementById('posSubtotalVal');
+    const discInp = document.getElementById('posDiscountInput');
+    const grandEl = document.getElementById('posGrandTotalVal');
+    const paidInp = document.getElementById('posPaidInput');
+    const changeEl = document.getElementById('posChangeVal');
+
+    const subtotal = appState.posCart.reduce((sum, i) => sum + (i.qty * i.salePrice), 0);
+    const discount = discInp ? (parseFloat(discInp.value) || 0) : 0;
+    const grandTotal = Math.max(0, subtotal - discount);
+
+    if (subtotalEl) subtotalEl.textContent = `${subtotal.toFixed(2)} ج.م`;
+    if (grandEl) grandEl.textContent = `${grandTotal.toFixed(2)} ج.م`;
+
+    const paid = paidInp ? (parseFloat(paidInp.value) || 0) : 0;
+    const change = Math.max(0, paid - grandTotal);
+    if (changeEl) changeEl.textContent = `${change.toFixed(2)} ج.م`;
+  }
+
+  async function checkoutPOS() {
+    if (appState.posCart.length === 0) {
+      alert('الفاتورة فارغة! يرجى إضافة صنف واحد على الأقل للبيع.');
+      return;
+    }
+
+    const numDisplay = document.getElementById('posInvoiceNumDisplay');
+    const invoiceNum = (numDisplay && numDisplay.getAttribute('data-active-num')) ? numDisplay.getAttribute('data-active-num') : ('INV-' + Math.floor(1000 + Math.random() * 9000));
+    const customerSelect = document.getElementById('posCustomerSelect');
+    const customerName = customerSelect ? (customerSelect.options[customerSelect.selectedIndex].text || 'عميل نقدي') : 'عميل نقدي';
+    const methodSelect = document.getElementById('posPaymentMethodSelect');
+    const paymentMethod = methodSelect ? methodSelect.value : 'كاش (الخزينة)';
+    const discInp = document.getElementById('posDiscountInput');
+    const discount = discInp ? (parseFloat(discInp.value) || 0) : 0;
+    const paidInp = document.getElementById('posPaidInput');
+    const subtotal = appState.posCart.reduce((sum, i) => sum + (i.qty * i.salePrice), 0);
+    const grandTotal = Math.max(0, subtotal - discount);
+    const paidAmount = paidInp ? (parseFloat(paidInp.value) || grandTotal) : grandTotal;
+    const changeAmount = Math.max(0, paidAmount - grandTotal);
+
+    const saleRecord = {
+      id: 'pos_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      invoiceNumber: invoiceNum,
+      userId: appState.currentUser ? appState.currentUser.id : null,
+      userName: appState.currentUser ? (appState.currentUser.fullName || appState.currentUser.username) : 'admin',
+      customerName,
+      date: formatDateStr(new Date()),
+      time: formatTimeStr(new Date()),
+      items: [...appState.posCart],
+      subtotal,
+      discount,
+      grandTotal,
+      paidAmount,
+      changeAmount,
+      paymentMethod,
+      createdAt: new Date().toISOString()
+    };
+
+    // خصم الكميات من رصيد المخزن
+    for (const cItem of appState.posCart) {
+      const prod = (appState.products || []).find(p => p.id === cItem.productId || (p.code && String(p.code) === String(cItem.code)));
+      if (prod) {
+        prod.stock = Math.max(0, (parseFloat(prod.stock) || 0) - cItem.qty);
+        prod.updatedAt = new Date().toISOString();
+        if (window.newTechDB) await window.newTechDB.saveProduct(prod);
+      }
+    }
+
+    // حفظ الفاتورة في IndexedDB و appState
+    appState.sales.unshift(saleRecord);
+    if (window.newTechDB) await window.newTechDB.saveSale(saleRecord);
+
+    syncLocalStorageCache();
+    playSoundPaid();
+    showToast(`✅ تم حفظ الفاتورة ${invoiceNum} بمبلغ ${grandTotal.toFixed(2)} ج.م بنجاح!`);
+
+    // عرض الفاتورة الحرارية للطباعة الفورية
+    showThermalReceipt(saleRecord);
+
+    // تصفير سلة المبيعات وتجهيز الفاتورة التالية
+    appState.posCart = [];
+    if (discInp) discInp.value = 0;
+    if (paidInp) paidInp.value = '';
+    if (numDisplay) {
+      const nextNum = 'INV-' + Math.floor(1000 + Math.random() * 9000);
+      numDisplay.setAttribute('data-active-num', nextNum);
+      numDisplay.textContent = `فاتورة مبيعات #${nextNum}`;
+    }
+    renderPOSCart();
+    renderPOSCatalog();
+    renderProductsTable();
+    updateMetricsAndBadges();
+  }
+
+  function showThermalReceipt(sale) {
+    document.getElementById('receiptInvoiceNum').textContent = `رقم الفاتورة: ${sale.invoiceNumber}`;
+    document.getElementById('receiptDate').textContent = `التاريخ: ${sale.date}`;
+    document.getElementById('receiptTime').textContent = `الوقت: ${sale.time}`;
+    document.getElementById('receiptCustomer').textContent = sale.customerName || 'عميل نقدي';
+    document.getElementById('receiptCashier').textContent = sale.userName || 'admin';
+
+    const itemsTbody = document.getElementById('receiptItemsTableBody');
+    if (itemsTbody) {
+      itemsTbody.innerHTML = (sale.items || []).map(it => `
+        <tr style="border-bottom:1px dotted #ccc;">
+          <td style="padding:0.25rem 0;">${escapeHtml(it.name)}</td>
+          <td style="text-align:center;">${it.qty}</td>
+          <td style="text-align:center;">${it.salePrice.toFixed(2)}</td>
+          <td style="text-align:left; font-weight:700;">${(it.qty * it.salePrice).toFixed(2)}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('receiptSubtotal').textContent = `${sale.subtotal.toFixed(2)} ج.م`;
+    const discRow = document.getElementById('receiptDiscountRow');
+    if (discRow) {
+      discRow.style.display = sale.discount > 0 ? 'flex' : 'none';
+      document.getElementById('receiptDiscount').textContent = `${sale.discount.toFixed(2)} ج.م`;
+    }
+    document.getElementById('receiptGrandTotal').textContent = `${sale.grandTotal.toFixed(2)} ج.م`;
+    document.getElementById('receiptPaid').textContent = `${sale.paidAmount.toFixed(2)} ج.م`;
+    document.getElementById('receiptChange').textContent = `${sale.changeAmount.toFixed(2)} ج.م`;
+    document.getElementById('receiptMethod').textContent = sale.paymentMethod || 'كاش';
+
+    const printBtn = document.getElementById('printReceiptBtn');
+    if (printBtn) {
+      printBtn.onclick = () => window.print();
+    }
+
+    openModal('posReceiptModal');
+  }
+
+  // ==========================================================================
+  // 23. نظام صرف النقدية المباشر من الدرج (Cash Drawer Payouts)
+  // ==========================================================================
+  function setupDrawerPayouts() {
+    const form = document.getElementById('drawerPayoutForm');
+    const openBtn = document.getElementById('openDrawerPayoutModalBtn');
+    const menuBtn = document.getElementById('menuPayout');
+    const posBtn = document.getElementById('posOpenPayoutBtn');
+    const searchInp = document.getElementById('payoutSearchInput');
+    const dateInp = document.getElementById('payoutDateInput');
+    const tbody = document.getElementById('drawerPayoutsTableBody');
+
+    function openPayoutModal() {
+      if (form) form.reset();
+      if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
+      const curCash = document.getElementById('drawerPayoutCurrentCashVal');
+      const statCash = document.getElementById('statTreasuryCash');
+      if (curCash && statCash) curCash.textContent = statCash.textContent;
+      renderDrawerPayoutsTable();
+      openModal('drawerPayoutModal');
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openPayoutModal);
+    if (menuBtn) menuBtn.addEventListener('click', openPayoutModal);
+    if (posBtn) posBtn.addEventListener('click', openPayoutModal);
+
+    if (searchInp) {
+      searchInp.addEventListener('input', () => {
+        renderDrawerPayoutsTable(searchInp.value.trim().toLowerCase());
+      });
+    }
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const amount = parseFloat(document.getElementById('payoutAmountInput').value) || 0;
+        const category = document.getElementById('payoutCategorySelect').value;
+        const recipient = document.getElementById('payoutRecipientInput').value.trim();
+        const date = dateInp ? dateInp.value : new Date().toISOString().split('T')[0];
+        const notes = document.getElementById('payoutNotesInput').value.trim();
+
+        if (amount <= 0) {
+          alert('يرجى كتابة مبلغ صرف صحيح أكبر من الصفر');
+          return;
+        }
+
+        const payout = {
+          id: 'payout_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          voucherNumber: 'PO-' + Math.floor(1000 + Math.random() * 9000),
+          userId: appState.currentUser ? appState.currentUser.id : null,
+          category,
+          recipient,
+          amount,
+          date,
+          time: formatTimeStr(new Date()),
+          notes,
+          createdAt: new Date().toISOString()
+        };
+
+        appState.payouts.unshift(payout);
+        if (window.newTechDB) await window.newTechDB.savePayout(payout);
+        syncLocalStorageCache();
+
+        form.reset();
+        if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
+        renderDrawerPayoutsTable();
+        updateMetricsAndBadges();
+        const curCash = document.getElementById('drawerPayoutCurrentCashVal');
+        const statCash = document.getElementById('statTreasuryCash');
+        if (curCash && statCash) curCash.textContent = statCash.textContent;
+
+        playSoundDelete();
+        showToast(`💸 تم صرف مبلغ ${amount.toFixed(2)} ج.م لصالح (${recipient}) وخصمه من الدرج بنجاح`);
+      });
+    }
+
+    if (tbody) {
+      tbody.addEventListener('click', async (e) => {
+        const delBtn = e.target.closest('[data-action="delete-payout"]');
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-id');
+          if (confirm('هل أنت متأكد من حذف إذن الصرف هذا وإعادة المبلغ للدرج؟')) {
+            appState.payouts = appState.payouts.filter(p => p.id !== id);
+            if (window.newTechDB) await window.newTechDB.deletePayout(id);
+            syncLocalStorageCache();
+            renderDrawerPayoutsTable();
+            updateMetricsAndBadges();
+            const curCash = document.getElementById('drawerPayoutCurrentCashVal');
+            const statCash = document.getElementById('statTreasuryCash');
+            if (curCash && statCash) curCash.textContent = statCash.textContent;
+            showToast('تم حذف إذن الصرف وإعادة الرصيد للدرج');
+          }
+        }
+      });
+    }
+  }
+
+  function renderDrawerPayoutsTable(query = '') {
+    const tbody = document.getElementById('drawerPayoutsTableBody');
+    if (!tbody) return;
+
+    let payouts = appState.payouts || [];
+    if (query) {
+      payouts = payouts.filter(p =>
+        (p.recipient || '').toLowerCase().includes(query) ||
+        (p.category || '').toLowerCase().includes(query) ||
+        (p.notes || '').toLowerCase().includes(query) ||
+        (p.voucherNumber || '').toLowerCase().includes(query)
+      );
+    }
+
+    if (payouts.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:1.25rem; color:var(--ab-text-dim);">لا توجد أذونات صرف نقدية مسجلة</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = payouts.map(p => `
+      <tr>
+        <td><small>${escapeHtml(p.date || '')} ${escapeHtml(p.time || '')}</small></td>
+        <td><span style="font-weight:700; color:#f59e0b;">${escapeHtml(p.category)}</span></td>
+        <td><strong>${escapeHtml(p.recipient)}</strong></td>
+        <td><strong style="color:var(--ab-unpaid); font-family:var(--font-latin);">${Number(p.amount).toFixed(2)} ج.م</strong></td>
+        <td style="color:var(--ab-text-muted);">${escapeHtml(p.notes || '-')}</td>
+        <td style="text-align:center;">
+          <button type="button" class="btn-cell-tool del" data-action="delete-payout" data-id="${p.id}" title="إلغاء وحذف إذن الصرف">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ==========================================================================
+  // 24. نظام جرد المخزن وطباعة استمارة الجرد الرسمية (Stocktaking & PDF)
+  // ==========================================================================
+  function setupStocktaking() {
+    const openBtn = document.getElementById('openStocktakingModalBtn');
+    const menuBtn = document.getElementById('menuStocktake');
+    const posBtn = document.getElementById('posOpenStockBtn');
+    const printBtn = document.getElementById('printStockAuditBtn');
+    const catSelect = document.getElementById('stockFilterCategorySelect');
+    const typeSelect = document.getElementById('stockFilterTypeSelect');
+
+    function openStockAudit() {
+      populateStockAuditCats();
+      renderStockAuditSheet();
+      openModal('stocktakingModal');
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openStockAudit);
+    if (menuBtn) menuBtn.addEventListener('click', openStockAudit);
+    if (posBtn) posBtn.addEventListener('click', openStockAudit);
+
+    if (catSelect) catSelect.addEventListener('change', renderStockAuditSheet);
+    if (typeSelect) typeSelect.addEventListener('change', renderStockAuditSheet);
+
+    if (printBtn) {
+      printBtn.addEventListener('click', () => {
+        window.print();
+      });
+    }
+  }
+
+  function populateStockAuditCats() {
+    const catSel = document.getElementById('stockFilterCategorySelect');
+    if (!catSel) return;
+    const currentVal = catSel.value;
+    const cats = new Set(['شواحن ومحولات', 'كابلات ووصلات', 'شاشات وقطع غيار', 'هاردات ورامات', 'ملحقات وإكسسوارات', 'صيانة ومستهلكات', 'عام']);
+    (appState.products || []).forEach(p => { if (p.category) cats.add(p.category); });
+
+    catSel.innerHTML = '<option value="ALL">جميع الأقسام والتصنيفات</option>' +
+      Array.from(cats).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+    if (currentVal) catSel.value = currentVal;
+  }
+
+  function renderStockAuditSheet() {
+    const tbody = document.getElementById('stockAuditTableBody');
+    const catSel = document.getElementById('stockFilterCategorySelect');
+    const typeSel = document.getElementById('stockFilterTypeSelect');
+    const cat = catSel ? catSel.value : 'ALL';
+    const type = typeSel ? typeSel.value : 'ALL';
+
+    let prods = appState.products || [];
+
+    if (cat !== 'ALL') {
+      prods = prods.filter(p => p.category === cat);
+    }
+
+    if (type === 'LOW_STOCK') {
+      prods = prods.filter(p => (parseFloat(p.stock) || 0) <= (parseFloat(p.minStock) || 3));
+    } else if (type === 'ZERO_STOCK') {
+      prods = prods.filter(p => (parseFloat(p.stock) || 0) <= 0);
+    }
+
+    let totalPieces = 0;
+    let totalCostVal = 0;
+    let totalSaleVal = 0;
+
+    prods.forEach(p => {
+      const q = parseFloat(p.stock) || 0;
+      const c = parseFloat(p.costPrice) || 0;
+      const s = parseFloat(p.salePrice) || c;
+      totalPieces += q;
+      totalCostVal += (q * c);
+      totalSaleVal += (q * s);
+    });
+
+    // تحديث كروت إحصائيات الجرد
+    const cntEl = document.getElementById('repStockItemsCount');
+    if (cntEl) cntEl.textContent = `${prods.length}`;
+    const pcsEl = document.getElementById('repStockTotalPieces');
+    if (pcsEl) pcsEl.textContent = `${totalPieces}`;
+    const cValEl = document.getElementById('repStockCostVal');
+    if (cValEl) cValEl.textContent = `${totalCostVal.toFixed(2)} ج.م`;
+    const sValEl = document.getElementById('repStockSaleVal');
+    if (sValEl) sValEl.textContent = `${totalSaleVal.toFixed(2)} ج.م`;
+
+    const dText = document.getElementById('stockAuditDateText');
+    if (dText) dText.textContent = `تاريخ الجرد: ${formatDateStr(new Date())}`;
+    const uText = document.getElementById('stockAuditUserText');
+    if (uText) uText.textContent = `المسؤول: ${appState.currentUser ? (appState.currentUser.fullName || appState.currentUser.username) : 'admin'}`;
+    const cText = document.getElementById('stockAuditCatText');
+    if (cText) cText.textContent = `القسم: ${cat === 'ALL' ? 'جميع الأقسام' : cat}`;
+
+    if (!tbody) return;
+
+    if (prods.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:1.5rem; color:#666;">لا توجد أصناف مسجلة تطابق محددات الجرد</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = prods.map((p, idx) => {
+      const q = parseFloat(p.stock) || 0;
+      const c = parseFloat(p.costPrice) || 0;
+      const s = parseFloat(p.salePrice) || c;
+      const totVal = q * c;
+
+      return `
+        <tr style="border-bottom:1px solid #ccc;">
+          <td style="padding:0.4rem;">${idx + 1}</td>
+          <td style="padding:0.4rem; font-family:monospace; font-weight:700;">${escapeHtml(p.code)}</td>
+          <td style="padding:0.4rem; text-align:right; font-weight:700;">${escapeHtml(p.name)}</td>
+          <td style="padding:0.4rem;">${escapeHtml(p.category || 'عام')}</td>
+          <td style="padding:0.4rem; font-weight:800; font-size:1rem; color:#059669;">${q}</td>
+          <td style="padding:0.4rem;">${c.toFixed(2)}</td>
+          <td style="padding:0.4rem;">${s.toFixed(2)}</td>
+          <td style="padding:0.4rem; font-weight:700;">${totVal.toFixed(2)}</td>
+          <td style="padding:0.4rem; background:#fffbe8; min-width:80px;">&nbsp;</td>
+          <td style="padding:0.4rem; background:#fffbe8; min-width:80px;">&nbsp;</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ==========================================================================
+  // 25. سجل فواتير المبيعات السابقة (Sales History)
+  // ==========================================================================
+  function setupSalesHistory() {
+    const openBtn = document.getElementById('openSalesHistoryModalBtn');
+    const posBtn = document.getElementById('posSalesHistoryBtn');
+    const searchInp = document.getElementById('salesSearchInput');
+    const tbody = document.getElementById('salesHistoryTableBody');
+
+    function openHistory() {
+      renderSalesHistoryTable();
+      openModal('salesHistoryModal');
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openHistory);
+    if (posBtn) posBtn.addEventListener('click', openHistory);
+
+    if (searchInp) {
+      searchInp.addEventListener('input', () => {
+        renderSalesHistoryTable(searchInp.value.trim().toLowerCase());
+      });
+    }
+
+    if (tbody) {
+      tbody.addEventListener('click', (e) => {
+        const viewBtn = e.target.closest('[data-action="view-receipt"]');
+        if (viewBtn) {
+          const id = viewBtn.getAttribute('data-id');
+          const sale = (appState.sales || []).find(s => s.id === id);
+          if (sale) {
+            closeModal('salesHistoryModal');
+            showThermalReceipt(sale);
+          }
+        }
+      });
+    }
+  }
+
+  function renderSalesHistoryTable(query = '') {
+    const tbody = document.getElementById('salesHistoryTableBody');
+    const tdTotalEl = document.getElementById('salesTodayTotalVal');
+    const allTotalEl = document.getElementById('salesAllTotalVal');
+    if (!tbody) return;
+
+    let sales = appState.sales || [];
+    const todayStr = formatDateStr(new Date());
+
+    let todayTotal = 0;
+    let grandTotal = 0;
+
+    sales.forEach(s => {
+      const val = parseFloat(s.grandTotal) || 0;
+      grandTotal += val;
+      if (s.date === todayStr) {
+        todayTotal += val;
+      }
+    });
+
+    if (tdTotalEl) tdTotalEl.textContent = `${todayTotal.toFixed(2)} ج.م`;
+    if (allTotalEl) allTotalEl.textContent = `${grandTotal.toFixed(2)} ج.م`;
+
+    if (query) {
+      sales = sales.filter(s =>
+        (s.invoiceNumber || '').toLowerCase().includes(query) ||
+        (s.customerName || '').toLowerCase().includes(query) ||
+        (s.paymentMethod || '').toLowerCase().includes(query) ||
+        (s.userName || '').toLowerCase().includes(query)
+      );
+    }
+
+    if (sales.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--ab-text-dim);">لا توجد فواتير مبيعات سابقة</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = sales.map(s => `
+      <tr>
+        <td><code class="cell-code text-ltr">${escapeHtml(s.invoiceNumber)}</code></td>
+        <td><strong>${escapeHtml(s.customerName || 'عميل نقدي')}</strong></td>
+        <td><small>${escapeHtml(s.date)} ${escapeHtml(s.time)}</small></td>
+        <td style="text-align:center; font-weight:700;">${(s.items || []).length} صنف</td>
+        <td><strong style="color:#10b981; font-family:var(--font-latin);">${Number(s.grandTotal).toFixed(2)} ج.م</strong></td>
+        <td><small style="color:var(--ab-cyan);">${escapeHtml(s.paymentMethod || 'كاش')}</small></td>
+        <td style="text-align:center;">
+          <button type="button" class="btn-cell-tool" data-action="view-receipt" data-id="${s.id}" title="عرض وطباعة إيصال الفاتورة">
+            <i class="fa-solid fa-print"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ==========================================================================
+  // 26. تحديث كافة عناصر الواجهة (Render All)
   // ==========================================================================
   function renderAll() {
     renderStructuredTableRows();
@@ -3480,10 +4439,13 @@
     renderVouchersTable();
     renderExpensesTable();
     renderProductsTable();
+    renderPOSCatalog();
+    renderPOSCart();
+    renderDrawerPayoutsTable();
   }
 
   // ==========================================================================
-  // 22. تهيئة التطبيق عند فتح الصفحة (DOM Ready)
+  // 27. تهيئة التطبيق عند فتح الصفحة (DOM Ready)
   // ==========================================================================
   document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -3506,6 +4468,11 @@
       setupExpenses();
       setupTreasury();
       setupProductsInventory();
+      setupViewSwitcher();
+      setupPOS();
+      setupDrawerPayouts();
+      setupStocktaking();
+      setupSalesHistory();
       renderAll();
     } catch (err) {
       console.error('Fatal initialization error:', err);

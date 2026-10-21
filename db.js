@@ -7,7 +7,7 @@
 class NewTechDB {
   constructor() {
     this.dbName = 'NewTechSystem_EnterpriseDB';
-    this.dbVersion = 6; // ترقية لدعم سندات القبض والصرف، المصروفات العامة، والمخزون الأوتوماتيكي
+    this.dbVersion = 7; // ترقية لدعم نقطة البيع POS وصرف النقدية المباشر وجرد المخزن
     this.db = null;
     this.isReady = false;
     this.initPromise = null;
@@ -119,6 +119,24 @@ class NewTechDB {
             prodStore.createIndex('name', 'name', { unique: false });
             prodStore.createIndex('category', 'category', { unique: false });
             prodStore.createIndex('userId', 'userId', { unique: false });
+          }
+
+          // 10. جدول فواتير المبيعات ونقاط البيع (POS Sales Invoices Store)
+          if (!db.objectStoreNames.contains('sales')) {
+            const salesStore = db.createObjectStore('sales', { keyPath: 'id' });
+            salesStore.createIndex('invoiceNumber', 'invoiceNumber', { unique: false });
+            salesStore.createIndex('customerId', 'customerId', { unique: false });
+            salesStore.createIndex('date', 'date', { unique: false });
+            salesStore.createIndex('userId', 'userId', { unique: false });
+          }
+
+          // 11. جدول صرف النقدية من الدرج (Cash Drawer Payouts Store)
+          if (!db.objectStoreNames.contains('payouts')) {
+            const payStore = db.createObjectStore('payouts', { keyPath: 'id' });
+            payStore.createIndex('category', 'category', { unique: false });
+            payStore.createIndex('recipient', 'recipient', { unique: false });
+            payStore.createIndex('date', 'date', { unique: false });
+            payStore.createIndex('userId', 'userId', { unique: false });
           }
         };
 
@@ -993,6 +1011,154 @@ class NewTechDB {
     return true;
   }
 
+  // ==========================================
+  // فواتير المبيعات ونقاط البيع (POS Sales)
+  // ==========================================
+  async getAllSales(userId = null) {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_sales') || '[]');
+    try {
+      if (!this.db || !this.db.objectStoreNames.contains('sales')) return local;
+      return new Promise((resolve) => {
+        const tx = this.db.transaction('sales', 'readonly');
+        const store = tx.objectStore('sales');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const dbItems = req.result || [];
+          const map = new Map();
+          local.forEach(s => map.set(s.id, s));
+          dbItems.forEach(s => map.set(s.id, s));
+          let list = Array.from(map.values());
+          if (userId) list = list.filter(s => !s.userId || s.userId === userId);
+          list.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+          resolve(list);
+        };
+        req.onerror = () => resolve(local);
+      });
+    } catch (e) {
+      return local;
+    }
+  }
+
+  async saveSale(sale) {
+    await this.ensureReady();
+    if (!sale.id) sale.id = 'sale_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    if (!sale.createdAt) sale.createdAt = new Date().toISOString();
+
+    const local = JSON.parse(localStorage.getItem('newtech_sales') || '[]');
+    const idx = local.findIndex(s => s.id === sale.id);
+    if (idx >= 0) local[idx] = sale; else local.unshift(sale);
+    localStorage.setItem('newtech_sales', JSON.stringify(local));
+
+    if (this.db && this.db.objectStoreNames.contains('sales')) {
+      try {
+        const tx = this.db.transaction(['sales', 'audit_log'], 'readwrite');
+        tx.objectStore('sales').put(sale);
+        tx.objectStore('audit_log').add({
+          action: 'SAVE_SALE',
+          details: `تسجيل فاتورة بيع ${sale.invoiceNumber} للعميل ${sale.customerName || 'نقدي'} بقيمة ${sale.grandTotal} ج.م`,
+          timestamp: new Date().toISOString(),
+          userId: sale.userId || null
+        });
+      } catch (e) {}
+    }
+    return sale;
+  }
+
+  async deleteSale(saleId, reason = 'حذف فاتورة بيع') {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_sales') || '[]');
+    const updated = local.filter(s => s.id !== saleId);
+    localStorage.setItem('newtech_sales', JSON.stringify(updated));
+
+    if (this.db && this.db.objectStoreNames.contains('sales')) {
+      try {
+        const tx = this.db.transaction(['sales', 'audit_log'], 'readwrite');
+        tx.objectStore('sales').delete(saleId);
+        tx.objectStore('audit_log').add({
+          action: 'DELETE_SALE',
+          details: `حذف فاتورة بيع ID: ${saleId} - السبب: ${reason}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {}
+    }
+    return true;
+  }
+
+  // ==========================================
+  // صرف النقدية من الدرج (Cash Drawer Payouts)
+  // ==========================================
+  async getAllPayouts(userId = null) {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_payouts') || '[]');
+    try {
+      if (!this.db || !this.db.objectStoreNames.contains('payouts')) return local;
+      return new Promise((resolve) => {
+        const tx = this.db.transaction('payouts', 'readonly');
+        const store = tx.objectStore('payouts');
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const dbItems = req.result || [];
+          const map = new Map();
+          local.forEach(p => map.set(p.id, p));
+          dbItems.forEach(p => map.set(p.id, p));
+          let list = Array.from(map.values());
+          if (userId) list = list.filter(p => !p.userId || p.userId === userId);
+          list.sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+          resolve(list);
+        };
+        req.onerror = () => resolve(local);
+      });
+    } catch (e) {
+      return local;
+    }
+  }
+
+  async savePayout(payout) {
+    await this.ensureReady();
+    if (!payout.id) payout.id = 'payout_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    if (!payout.createdAt) payout.createdAt = new Date().toISOString();
+
+    const local = JSON.parse(localStorage.getItem('newtech_payouts') || '[]');
+    const idx = local.findIndex(p => p.id === payout.id);
+    if (idx >= 0) local[idx] = payout; else local.unshift(payout);
+    localStorage.setItem('newtech_payouts', JSON.stringify(local));
+
+    if (this.db && this.db.objectStoreNames.contains('payouts')) {
+      try {
+        const tx = this.db.transaction(['payouts', 'audit_log'], 'readwrite');
+        tx.objectStore('payouts').put(payout);
+        tx.objectStore('audit_log').add({
+          action: 'SAVE_PAYOUT',
+          details: `صرف نقدية من الدرج: ${payout.category} - ${payout.recipient} بقيمة ${payout.amount} ج.م`,
+          timestamp: new Date().toISOString(),
+          userId: payout.userId || null
+        });
+      } catch (e) {}
+    }
+    return payout;
+  }
+
+  async deletePayout(payoutId, reason = 'حذف صرف نقدية') {
+    await this.ensureReady();
+    const local = JSON.parse(localStorage.getItem('newtech_payouts') || '[]');
+    const updated = local.filter(p => p.id !== payoutId);
+    localStorage.setItem('newtech_payouts', JSON.stringify(updated));
+
+    if (this.db && this.db.objectStoreNames.contains('payouts')) {
+      try {
+        const tx = this.db.transaction(['payouts', 'audit_log'], 'readwrite');
+        tx.objectStore('payouts').delete(payoutId);
+        tx.objectStore('audit_log').add({
+          action: 'DELETE_PAYOUT',
+          details: `حذف صرف نقدية ID: ${payoutId} - السبب: ${reason}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (e) {}
+    }
+    return true;
+  }
+
   async getDatabaseStats() {
     const transactions = await this.getAllTransactions();
     const purchases = await this.getAllPurchases();
@@ -1001,9 +1167,11 @@ class NewTechDB {
     const vouchers = await this.getAllVouchers();
     const expenses = await this.getAllExpenses();
     const products = await this.getAllProducts();
+    const sales = await this.getAllSales();
+    const payouts = await this.getAllPayouts();
     const logs = await this.getAuditLogs(500);
 
-    const rawData = JSON.stringify({ transactions, purchases, companies, users, vouchers, expenses, products, logs });
+    const rawData = JSON.stringify({ transactions, purchases, companies, users, vouchers, expenses, products, sales, payouts, logs });
     const sizeKB = (new Blob([rawData]).size / 1024).toFixed(2);
 
     return {
@@ -1018,6 +1186,8 @@ class NewTechDB {
       vouchersCount: vouchers.length,
       expensesCount: expenses.length,
       productsCount: products.length,
+      salesCount: sales.length,
+      payoutsCount: payouts.length,
       auditLogsCount: logs.length,
       approxSizeKB: sizeKB
     };
