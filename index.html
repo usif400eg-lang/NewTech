@@ -267,152 +267,224 @@
 
     <div class="ribbon-separator"></div>
 
-    <!-- 0. صرف نقدية من الدرج -->
-    <button class="btn-ab-primary" id="openDrawerPayoutModalBtn"
-      style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%); border-color: rgba(245, 158, 11, 0.5);">
-      <span class="btn-purple-badge" style="background: #f59e0b; color:#000;">
-        <i class="fa-solid fa-hand-holding-dollar"></i>
-      </span>
-      <span>- صرف نقدية</span>
-    </button>
+    <!-- إجراءات رئيسية سريعة ومباشرة -->
+    <div class="ribbon-quick-actions">
+      <!-- 1. إضافة صنف مسحوب جديد -->
+      <button class="btn-ab-primary" id="openAddModalBtn" title="تسجيل مسحوب أو عملية بيع جديدة">
+        <span class="btn-purple-badge">
+          <i class="fa-solid fa-plus"></i>
+        </span>
+        <span>مسحوب جديد</span>
+      </button>
 
-    <!-- 1. فاتورة مشتريات جديدة -->
-    <button class="btn-ab-primary" id="openNewPurchaseModalBtn"
-      style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.2) 0%, rgba(14, 165, 233, 0.2) 100%); border-color: rgba(6, 182, 212, 0.4);">
-      <span class="btn-purple-badge" style="background: #06b6d4; color:#000;">
-        <i class="fa-solid fa-cart-shopping"></i>
-      </span>
-      <span>+ فاتورة مشتريات</span>
-    </button>
+      <!-- 2. فاتورة مشتريات جديدة -->
+      <button class="btn-ab-primary btn-ab-cyan" id="openNewPurchaseModalBtn" title="إضافة فاتورة مشتريات بضاعة من مورد">
+        <span class="btn-purple-badge" style="background:#06b6d4; color:#000;">
+          <i class="fa-solid fa-cart-shopping"></i>
+        </span>
+        <span>+ مشتريات</span>
+      </button>
 
-    <!-- 2. إضافة صنف مسحوب -->
-    <button class="btn-ab-primary" id="openAddModalBtn">
-      <span class="btn-purple-badge">
-        <i class="fa-solid fa-plus"></i>
-      </span>
-      <span>+ مسحوب جديد</span>
-    </button>
+      <!-- 3. سند قبض / صرف -->
+      <button class="btn-ab-primary btn-ab-emerald" id="openVoucherModalBtn" title="تسجيل سند قبض نقدية أو دفع مستحقات">
+        <span class="btn-purple-badge" style="background:#10b981; color:#000;">
+          <i class="fa-solid fa-money-bill-transfer"></i>
+        </span>
+        <span>سند قبض/صرف</span>
+      </button>
 
-    <!-- 3. سند قبض / صرف -->
-    <button class="btn-ab-primary" id="openVoucherModalBtn"
-      style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%); border-color: rgba(16, 185, 129, 0.4);">
-      <span class="btn-purple-badge" style="background: #10b981; color:#000;">
-        <i class="fa-solid fa-money-bill-transfer"></i>
-      </span>
-      <span>+ سند قبض / صرف</span>
-    </button>
-
-    <!-- 4. تسجيل مصروف -->
-    <button class="btn-ab-primary" id="openExpenseModalBtn"
-      style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%); border-color: rgba(245, 158, 11, 0.4);">
-      <span class="btn-purple-badge" style="background: #f59e0b; color:#000;">
-        <i class="fa-solid fa-receipt"></i>
-      </span>
-      <span>+ تسجيل مصروف</span>
-    </button>
+      <!-- 4. صرف نقدية من الخزينة/الدرج -->
+      <button class="btn-ab-primary btn-ab-amber" id="openDrawerPayoutModalBtn" title="صرف نقدية عاجل من الدرج">
+        <span class="btn-purple-badge" style="background:#f59e0b; color:#000;">
+          <i class="fa-solid fa-hand-holding-dollar"></i>
+        </span>
+        <span>- صرف نقدية</span>
+      </button>
+    </div>
 
     <div class="ribbon-separator"></div>
 
-    <!-- جرد المخزن (PDF) -->
-    <button class="ribbon-btn" id="openStocktakingModalBtn"
-      title="استمارة جرد المخزن الرسمية ومطابقة الأرصدة جاهزة للطباعة PDF">
-      <i class="fa-solid fa-clipboard-check" style="color:var(--ab-cyan);"></i>
-      <span>جرد المخزن (PDF)</span>
-    </button>
+    <!-- قوائم منسدلة أنيقة بسهم (Dropdowns) عند الإشارة بالسهم تظهر باقي الخيارات -->
+    <div class="ribbon-dropdowns-container">
 
-    <!-- سجل المبيعات -->
-    <button class="ribbon-btn" id="openSalesHistoryModalBtn" title="عرض كافة فواتير المبيعات ونقاط البيع السابقة">
-      <i class="fa-solid fa-receipt" style="color:#10b981;"></i>
-      <span>فواتير البيع</span>
-    </button>
+      <!-- قائمة 1: المالية والخزينة -->
+      <div class="ribbon-dropdown-group" id="groupFinance">
+        <button type="button" class="ribbon-dropdown-trigger">
+          <i class="fa-solid fa-vault" style="color:#10b981;"></i>
+          <span>المالية والخزينة</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div class="ribbon-dropdown-menu">
+          <button type="button" class="ribbon-dropdown-item" id="openTreasuryModalBtn" title="الخزينة وحركة النقدية الفورية وتقفيل اليومية">
+            <i class="fa-solid fa-vault" style="color:#10b981;"></i>
+            <div class="dropdown-item-info">
+              <strong>الخزينة واليومية</strong>
+              <small>حركة الدرج والخزائن وتقفيل الوردية</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openExpenseModalBtn" title="تسجيل مصروف ونثريات جديدة">
+            <i class="fa-solid fa-receipt" style="color:#f59e0b;"></i>
+            <div class="dropdown-item-info">
+              <strong>تسجيل مصروف</strong>
+              <small>إضافة فاتورة نثريات أو إيجار أو مصروف</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openExpensesListBtn" title="عرض كافة المصروفات والنثريات">
+            <i class="fa-solid fa-wallet" style="color:#f59e0b;"></i>
+            <div class="dropdown-item-info">
+              <strong>سجل المصروفات</strong>
+              <small>تاريخ وتقارير كافة المصروفات</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openVouchersListBtn" title="عرض كافة سندات القبض والصرف وسداد الدفعات">
+            <i class="fa-solid fa-file-invoice" style="color:#10b981;"></i>
+            <div class="dropdown-item-info">
+              <strong>سجل السندات</strong>
+              <small>سندات القبض والدفعات وسداد الديون</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openNettingModalBtn" title="خاصية التصفية والمقاصة التلقائية بين الحسابات">
+            <i class="fa-solid fa-scale-unbalanced-flip" style="color:var(--ab-accent);"></i>
+            <div class="dropdown-item-info">
+              <strong>المقاصة والتصفية</strong>
+              <small>تسوية الحسابات المتبادلة بين الأطراف</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openAccountStatementBtn" title="كشف حساب تفصيلي والمقاصة للشركة">
+            <i class="fa-solid fa-file-invoice-dollar" style="color:#38bdf8;"></i>
+            <div class="dropdown-item-info">
+              <strong>كشف حساب</strong>
+              <small>كشف حساب تفصيلي وميزان مراجعة</small>
+            </div>
+          </button>
+        </div>
+      </div>
 
-    <!-- الخزينة واليومية -->
-    <button class="ribbon-btn" id="openTreasuryModalBtn" title="الخزينة وحركة النقدية الفورية وتقفيل اليومية">
-      <i class="fa-solid fa-vault" style="color:#10b981;"></i>
-      <span>الخزينة واليومية</span>
-    </button>
+      <!-- قائمة 2: المخزن والمبيعات -->
+      <div class="ribbon-dropdown-group" id="groupInventory">
+        <button type="button" class="ribbon-dropdown-trigger">
+          <i class="fa-solid fa-boxes-stacked" style="color:var(--ab-cyan);"></i>
+          <span>المخزن والمنتجات</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div class="ribbon-dropdown-menu">
+          <button type="button" class="ribbon-dropdown-item" id="openProductsModalBtn" title="إدارة الأصناف والمخزون وجرد النواقص">
+            <i class="fa-solid fa-boxes-stacked" style="color:var(--ab-cyan);"></i>
+            <div class="dropdown-item-info">
+              <strong>المخزن والأصناف</strong>
+              <small>بطاقات المنتجات والكميات وأسعار التكلفة</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openStocktakingModalBtn" title="استمارة جرد المخزن الرسمية للطباعة PDF">
+            <i class="fa-solid fa-clipboard-check" style="color:var(--ab-cyan);"></i>
+            <div class="dropdown-item-info">
+              <strong>جرد المخزن (PDF)</strong>
+              <small>استمارة الجرد ومطابقة الأرصدة الفعلية</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openPurchasesListBtn" title="عرض كافة فواتير المشتريات من الموردين">
+            <i class="fa-solid fa-boxes-packing" style="color:#38bdf8;"></i>
+            <div class="dropdown-item-info">
+              <strong>فواتير المشتريات</strong>
+              <small>سجل فواتير الوارد والكميات المشتراة</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openSalesHistoryModalBtn" title="عرض كافة فواتير المبيعات ونقاط البيع السابقة">
+            <i class="fa-solid fa-receipt" style="color:#10b981;"></i>
+            <div class="dropdown-item-info">
+              <strong>فواتير البيع</strong>
+              <small>سجل فواتير الكاشير والمبيعات السابقة</small>
+            </div>
+          </button>
+        </div>
+      </div>
 
-    <!-- المخزن والأصناف -->
-    <button class="ribbon-btn" id="openProductsModalBtn" title="إدارة الأصناف والمخزون وجرد النواقص">
-      <i class="fa-solid fa-boxes-stacked" style="color:var(--ab-cyan);"></i>
-      <span>المخزن والأصناف</span>
-    </button>
+      <!-- قائمة 3: الموردين والشركات -->
+      <div class="ribbon-dropdown-group" id="groupSuppliers">
+        <button type="button" class="ribbon-dropdown-trigger">
+          <i class="fa-solid fa-truck-field" style="color:#38bdf8;"></i>
+          <span>الشركات والموردين</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div class="ribbon-dropdown-menu">
+          <button type="button" class="ribbon-dropdown-item" id="openSuppliersModalBtn" title="إدارة الموردين الذين تشتري منهم وإضافة موردين جدد">
+            <i class="fa-solid fa-truck-field" style="color:#38bdf8;"></i>
+            <div class="dropdown-item-info">
+              <strong>دليل الموردين</strong>
+              <small>إضافة وتعديل بيانات الموردين وأرقامهم</small>
+            </div>
+          </button>
+          <button type="button" class="ribbon-dropdown-item" id="openCompaniesModalBtn" title="إدارة شركات المول والموردين">
+            <i class="fa-solid fa-building-user" style="color:#a78bfa;"></i>
+            <div class="dropdown-item-info">
+              <strong>شركات ومحلات المول</strong>
+              <small>حسابات الشركات وسجلات التعامل</small>
+            </div>
+          </button>
+        </div>
+      </div>
 
-    <!-- فواتير المشتريات -->
-    <button class="ribbon-btn" id="openPurchasesListBtn" title="عرض كافة فواتير المشتريات من الموردين">
-      <i class="fa-solid fa-boxes-packing" style="color:var(--ab-cyan);"></i>
-      <span>فواتير المشتريات</span>
-    </button>
+      <!-- قائمة 4: أدوات وفلاتر -->
+      <div class="ribbon-dropdown-group" id="groupTools">
+        <button type="button" class="ribbon-dropdown-trigger">
+          <i class="fa-solid fa-sliders" style="color:var(--ab-accent);"></i>
+          <span>أدوات وفلاتر</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div class="ribbon-dropdown-menu">
+          <button type="button" class="ribbon-dropdown-item" id="exportExcelBtn" title="تصدير كشف إكسيل UTF-8">
+            <i class="fa-solid fa-file-excel" style="color:#10b981;"></i>
+            <div class="dropdown-item-info">
+              <strong>تصدير إكسيل (Excel)</strong>
+              <small>تصدير كافة السجلات لملف إكسيل نظيف</small>
+            </div>
+          </button>
 
-    <!-- سندات القبض والصرف -->
-    <button class="ribbon-btn" id="openVouchersListBtn" title="عرض كافة سندات القبض والصرف وسداد الدفعات">
-      <i class="fa-solid fa-file-invoice" style="color:#10b981;"></i>
-      <span>سجل السندات</span>
-    </button>
+          <div class="dropdown-menu-divider"></div>
+          <div class="dropdown-menu-header">تصفية السجل الحالي:</div>
 
-    <!-- سجل المصروفات -->
-    <button class="ribbon-btn" id="openExpensesListBtn" title="عرض كافة المصروفات والنثريات">
-      <i class="fa-solid fa-wallet" style="color:#f59e0b;"></i>
-      <span>المصروفات</span>
-    </button>
+          <button type="button" class="ribbon-dropdown-item" id="btnFilterUnpaid" title="المسحوبات غير المسددة فقط (الآجل)">
+            <i class="fa-solid fa-hourglass-half" style="color:var(--ab-unpaid);"></i>
+            <div class="dropdown-item-info">
+              <strong>المسحوبات الآجلة</strong>
+              <small>غير المسددة فقط</small>
+            </div>
+          </button>
 
-    <!-- المقاصة والتصفية -->
-    <button class="ribbon-btn" id="openNettingModalBtn" title="خاصية التصفية والمقاصة التلقائية بين الحسابات">
-      <i class="fa-solid fa-scale-unbalanced-flip" style="color:var(--ab-accent);"></i>
-      <span>المقاصة</span>
-    </button>
+          <button type="button" class="ribbon-dropdown-item" id="btnFilterPaid" title="المسحوبات المسددة فقط">
+            <i class="fa-solid fa-circle-check" style="color:var(--ab-paid);"></i>
+            <div class="dropdown-item-info">
+              <strong>المسحوبات المسددة</strong>
+              <small>تم الدفع بالكامل</small>
+            </div>
+          </button>
 
-    <div class="ribbon-separator"></div>
+          <button type="button" class="ribbon-dropdown-item" id="btnFilterReturned" title="المرتجعات المسجلة">
+            <i class="fa-solid fa-rotate-left" style="color:var(--ab-returned);"></i>
+            <div class="dropdown-item-info">
+              <strong>سجل المرتجعات</strong>
+            </div>
+          </button>
 
-    <button class="ribbon-btn" id="openSuppliersModalBtn" title="إدارة الموردين الذين تشتري منهم وإضافة موردين جدد">
-      <i class="fa-solid fa-truck-field" style="color:#38bdf8;"></i>
-      <span>الموردين</span>
-    </button>
+          <div class="dropdown-menu-divider"></div>
 
-    <button class="ribbon-btn" id="openCompaniesModalBtn" title="إدارة شركات المول والموردين">
-      <i class="fa-solid fa-building-user"></i>
-      <span>الشركات</span>
-    </button>
+          <button type="button" class="ribbon-dropdown-item" id="ribbonDbBtn" title="التحكم في قاعدة البيانات وسيرفر PostgreSQL/SQLite">
+            <i class="fa-solid fa-database" style="color:var(--ab-cyan);"></i>
+            <div class="dropdown-item-info">
+              <strong>قاعدة البيانات والمزامنة</strong>
+            </div>
+          </button>
 
-    <button class="ribbon-btn" id="openAccountStatementBtn" title="كشف حساب تفصيلي والمقاصة للشركة">
-      <i class="fa-solid fa-file-invoice-dollar"></i>
-      <span>كشف حساب</span>
-    </button>
+          <button type="button" class="ribbon-dropdown-item" id="ribbonClearAllBtn" title="تصفير وتفريغ كل الأصناف للبدء على نظيف">
+            <i class="fa-solid fa-trash-can" style="color:var(--ab-unpaid);"></i>
+            <div class="dropdown-item-info">
+              <strong style="color:var(--ab-unpaid);">تفريغ وتصفير الأصناف</strong>
+            </div>
+          </button>
+        </div>
+      </div>
 
-    <button class="ribbon-btn" id="exportExcelBtn" title="تصدير كشف إكسيل UTF-8">
-      <i class="fa-solid fa-file-excel"></i>
-      <span>تصدير إكسيل</span>
-    </button>
-
-    <div class="ribbon-separator"></div>
-
-    <!-- فلاتر الحالات -->
-    <button class="ribbon-btn" id="btnFilterUnpaid" title="المسحوبات غير المسددة فقط (الآجل)">
-      <i class="fa-solid fa-hourglass-half" style="color:var(--ab-unpaid);"></i>
-      <span>آجل</span>
-    </button>
-
-    <button class="ribbon-btn" id="btnFilterPaid" title="المسحوبات المسددة فقط">
-      <i class="fa-solid fa-circle-check" style="color:var(--ab-paid);"></i>
-      <span>مسدد</span>
-    </button>
-
-    <button class="ribbon-btn" id="btnFilterReturned" title="المرتجعات المسجلة">
-      <i class="fa-solid fa-rotate-left" style="color:var(--ab-returned);"></i>
-      <span>المرتجعات</span>
-    </button>
-
-    <button class="ribbon-btn" id="ribbonDbBtn" title="التحكم في قاعدة البيانات وسيرفر PostgreSQL/SQLite">
-      <i class="fa-solid fa-database" style="color:var(--ab-accent);"></i>
-      <span>قاعدة البيانات</span>
-    </button>
-
-    <div class="ribbon-separator"></div>
-
-    <button class="ribbon-btn ribbon-btn-danger" id="ribbonClearAllBtn" title="تصفير وتفريغ كل الأصناف للبدء على نظيف">
-      <i class="fa-solid fa-trash-can" style="color:var(--ab-unpaid);"></i>
-      <span>تفريغ</span>
-    </button>
+    </div>
   </section>
 
   <!-- ==========================================================================
@@ -670,31 +742,33 @@
               </table>
             </div>
 
-            <!-- إجماليات الفاتورة والدفع -->
+            <!-- إجماليات الفاتورة والدفع بتصميم متناسق ومدمج -->
             <div class="pos-cart-totals-card">
-              <div class="pos-total-row">
-                <span>المجموع الفرعي:</span>
-                <strong id="posSubtotalVal" style="font-family:var(--font-latin);">0.00 ج.م</strong>
-              </div>
-              <div class="pos-total-row">
-                <span>خصم إضافي:</span>
-                <div style="display:flex; align-items:center; gap:0.25rem;">
-                  <input type="number" id="posDiscountInput" class="form-control text-ltr" value="0" min="0" step="0.5"
-                    style="width:80px; padding:0.15rem 0.35rem; font-size:0.8rem; text-align:center;">
-                  <span style="font-size:0.75rem;">ج.م</span>
+              <div class="pos-totals-summary-grid">
+                <div class="pos-total-row">
+                  <span style="font-size:0.75rem; color:var(--ab-text-muted);">المجموع الفرعي:</span>
+                  <strong id="posSubtotalVal" style="font-family:var(--font-latin); font-size:0.95rem;">0.00 ج.م</strong>
+                </div>
+                <div class="pos-total-row">
+                  <span style="font-size:0.75rem; color:var(--ab-text-muted);">خصم إضافي:</span>
+                  <div style="display:flex; align-items:center; gap:0.25rem;">
+                    <input type="number" id="posDiscountInput" class="form-control text-ltr" value="0" min="0" step="0.5"
+                      style="width:70px; padding:0.15rem 0.3rem; font-size:0.8rem; text-align:center;">
+                    <span style="font-size:0.7rem;">ج.م</span>
+                  </div>
+                </div>
+                <div class="pos-total-row grand">
+                  <span style="font-size:0.82rem; font-weight:800; color:#fff;">الإجمالي المستحق:</span>
+                  <strong id="posGrandTotalVal"
+                    style="font-family:var(--font-latin); font-size:1.35rem; color:#10b981;">0.00 ج.م</strong>
                 </div>
               </div>
-              <div class="pos-total-row grand">
-                <span>الإجمالي المستحق:</span>
-                <strong id="posGrandTotalVal"
-                  style="font-family:var(--font-latin); font-size:1.35rem; color:#10b981;">0.00 ج.م</strong>
-              </div>
 
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:0.4rem;">
-                <div class="form-group" style="margin-bottom:0;">
-                  <label style="font-size:0.7rem; color:var(--ab-text-muted);">طريقة الدفع:</label>
+              <div class="pos-payment-details-row">
+                <div class="form-group" style="margin-bottom:0; flex:1.2;">
+                  <label style="font-size:0.7rem; color:var(--ab-text-muted); margin-bottom:0.15rem; display:block;">طريقة الدفع:</label>
                   <select id="posPaymentMethodSelect" class="form-control"
-                    style="font-size:0.75rem; padding:0.2rem 0.4rem;">
+                    style="font-size:0.78rem; padding:0.25rem 0.4rem;">
                     <option value="كاش (الخزينة)" selected>💵 كاش (الخزينة)</option>
                     <option value="فودافون كاش ومحافظ">📱 فودافون كاش ومحافظ</option>
                     <option value="تحويل بنكي / إلكتروني">🏦 تحويل بنكي</option>
@@ -702,17 +776,15 @@
                     <option value="آجل (غير مدفوع)">⏳ آجل (حساب عميل)</option>
                   </select>
                 </div>
-                <div class="form-group" style="margin-bottom:0;">
-                  <label style="font-size:0.7rem; color:var(--ab-text-muted);">المبلغ المستلم (المدفوع):</label>
+                <div class="form-group" style="margin-bottom:0; flex:1;">
+                  <label style="font-size:0.7rem; color:var(--ab-text-muted); margin-bottom:0.15rem; display:block;">المبلغ المستلم:</label>
                   <input type="number" id="posPaidInput" class="form-control text-ltr" placeholder="0.00" min="0"
-                    step="0.5" style="font-size:0.85rem; font-weight:800; padding:0.2rem 0.4rem; color:var(--ab-cyan);">
+                    step="0.5" style="font-size:0.88rem; font-weight:800; padding:0.25rem 0.4rem; color:var(--ab-cyan);">
                 </div>
-              </div>
-
-              <div class="pos-change-row" id="posChangeRow">
-                <span style="font-size:0.78rem;">الفكة المسترجعة للزبون:</span>
-                <strong id="posChangeVal" style="font-family:var(--font-latin); color:#10b981; font-size:1.1rem;">0.00
-                  ج.م</strong>
+                <div class="pos-change-box" id="posChangeRow">
+                  <span style="font-size:0.7rem; color:var(--ab-text-dim);">الفكة للزبون:</span>
+                  <strong id="posChangeVal" style="font-family:var(--font-latin); color:#10b981; font-size:1.1rem;">0.00 ج.م</strong>
+                </div>
               </div>
 
               <div class="pos-action-buttons">

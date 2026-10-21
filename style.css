@@ -412,31 +412,19 @@ html {
 }
 
 .titlebar-menus {
-  display: flex;
-  gap: 0.75rem;
-  color: var(--ab-text-muted);
-}
-
-.titlebar-menu-item {
-  cursor: pointer;
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--radius-xs);
-  transition: all 0.15s ease;
-}
-.titlebar-menu-item:hover {
-  color: #fff;
-  background: var(--ab-bg-toolbar);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
+  display: none !important; /* إخفاء لتجنب التزاحم، حيث تتوفر كل العمليات في شريط الإجراءات والـ Dropdowns */
 }
 
 .titlebar-center {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.85rem;
   font-family: var(--font-latin);
   font-weight: 700;
   color: var(--ab-text-muted);
   font-size: 0.88rem;
+  flex: 1;
 }
 
 .db-status-pill {
@@ -681,100 +669,250 @@ html {
 .ribbon-toolbar {
   background-color: var(--ab-bg-toolbar);
   border-bottom: 1px solid var(--ab-border);
-  padding: 0.55rem 1.25rem;
+  padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.65rem;
   flex-shrink: 0;
-  overflow-x: auto;
-  z-index: 90;
+  overflow: visible;
+  z-index: 100;
   position: relative;
+  flex-wrap: wrap;
+}
+
+.ribbon-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.ribbon-dropdowns-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
 }
 
 .btn-ab-primary {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 1.2rem;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(99, 102, 241, 0.15));
-  border: 1px solid rgba(139, 92, 246, 0.5);
+  gap: 0.55rem;
+  padding: 0.45rem 0.95rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(139, 92, 246, 0.45);
   border-radius: var(--radius-sm);
   color: #fff;
   font-family: var(--font-arabic);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  white-space: nowrap;
 }
 
 .btn-ab-primary:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(99, 102, 241, 0.25));
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(99, 102, 241, 0.22));
   border-color: var(--ab-accent);
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.45);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
   transform: translateY(-1px);
+}
+
+.btn-ab-primary.btn-ab-cyan {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(14, 165, 233, 0.12));
+  border-color: rgba(6, 182, 212, 0.4);
+}
+.btn-ab-primary.btn-ab-cyan:hover {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.35), rgba(14, 165, 233, 0.25));
+  border-color: var(--ab-cyan);
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.4);
+}
+
+.btn-ab-primary.btn-ab-emerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.12));
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.btn-ab-primary.btn-ab-emerald:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(5, 150, 105, 0.25));
+  border-color: var(--ab-paid);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-ab-primary.btn-ab-amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.12));
+  border-color: rgba(245, 158, 11, 0.45);
+}
+.btn-ab-primary.btn-ab-amber:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(217, 119, 6, 0.25));
+  border-color: #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
 }
 
 .btn-ab-primary .btn-purple-badge {
   background-color: var(--ab-accent);
   color: #fff;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  box-shadow: 0 0 10px var(--ab-accent-glow);
+  font-size: 0.76rem;
+  box-shadow: 0 0 8px var(--ab-accent-glow);
 }
 
-.ribbon-btn {
+/* ==========================================================================
+   Ribbon Dropdown Groups (القوائم المنسدلة الذكية بالسهم)
+   ========================================================================== */
+.ribbon-dropdown-group {
+  position: relative;
+  display: inline-block;
+}
+
+.ribbon-dropdown-trigger {
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.85rem;
-  background: transparent;
-  border: 1px solid transparent;
+  gap: 0.55rem;
+  padding: 0.45rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--ab-border);
   border-radius: var(--radius-sm);
-  color: var(--ab-text-muted);
-  cursor: pointer;
+  color: var(--ab-text-main);
   font-family: var(--font-arabic);
-  font-size: 0.78rem;
-  gap: 0.25rem;
-  transition: all 0.18s ease;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
 
-.ribbon-btn i {
-  font-size: 1.05rem;
-  color: var(--ab-text-muted);
-  transition: all 0.18s ease;
-}
-
-.ribbon-btn:hover {
-  background-color: var(--ab-bg-base);
-  border-color: var(--ab-border);
+.ribbon-dropdown-trigger:hover,
+.ribbon-dropdown-group:hover .ribbon-dropdown-trigger,
+.ribbon-dropdown-group.active .ribbon-dropdown-trigger {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: var(--ab-accent);
   color: #fff;
+  box-shadow: 0 0 14px var(--ab-accent-glow);
   transform: translateY(-1px);
 }
-.ribbon-btn:hover i {
-  color: var(--ab-accent);
-  filter: drop-shadow(0 0 8px var(--ab-accent-glow));
+
+.dropdown-arrow {
+  font-size: 0.68rem;
+  color: var(--ab-text-dim);
+  transition: transform 0.25s ease, color 0.2s ease;
+  margin-right: 0.2rem;
 }
 
-.ribbon-btn-danger:hover {
-  border-color: rgba(244, 63, 94, 0.4);
-  box-shadow: 0 0 14px rgba(244, 63, 94, 0.25);
+.ribbon-dropdown-group:hover .dropdown-arrow,
+.ribbon-dropdown-group.active .dropdown-arrow {
+  transform: rotate(180deg);
+  color: var(--ab-accent-light);
 }
-.ribbon-btn-danger:hover i {
-  color: var(--ab-unpaid);
-  filter: drop-shadow(0 0 8px var(--ab-unpaid-glow));
+
+.ribbon-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 245px;
+  background: rgba(15, 17, 26, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--ab-border-hover);
+  border-radius: var(--radius-md);
+  padding: 0.45rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(139, 92, 246, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.98);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.ribbon-dropdown-group:hover .ribbon-dropdown-menu,
+.ribbon-dropdown-group.active .ribbon-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.ribbon-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--ab-text-main);
+  font-family: var(--font-arabic);
+  text-align: right;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ribbon-dropdown-item i {
+  font-size: 1.05rem;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dropdown-item-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: right;
+  gap: 0.1rem;
+}
+
+.dropdown-item-info strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.dropdown-item-info small {
+  font-size: 0.7rem;
+  color: var(--ab-text-dim);
+  line-height: 1.2;
+}
+
+.ribbon-dropdown-item:hover {
+  background: rgba(139, 92, 246, 0.16);
+  border-color: rgba(139, 92, 246, 0.35);
+  transform: translateX(-3px);
+}
+
+.ribbon-dropdown-item:hover .dropdown-item-info small {
+  color: var(--ab-text-muted);
+}
+
+.dropdown-menu-divider {
+  height: 1px;
+  background: var(--ab-border-subtle);
+  margin: 0.35rem 0.4rem;
+}
+
+.dropdown-menu-header {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--ab-text-dim);
+  padding: 0.25rem 0.75rem 0.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .ribbon-separator {
   width: 1px;
-  height: 30px;
+  height: 26px;
   background-color: var(--ab-border);
   margin: 0 0.35rem;
 }
@@ -2622,84 +2760,52 @@ html {
   color: #fff;
 }
 
-/* شبكة أزرار الاختصارات السريعة أسفل السلة */
+/* شبكة أزرار الاختصارات السريعة أسفل السلة (مخفية لتوفير مساحة لجدول الفاتورة مع بقاء الأزرار العلوية التفاعلية) */
 .pos-shortcuts-buttons-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
-  margin-top: 0.5rem;
+  display: none !important;
 }
 
-.pos-grid-btn {
+/* التنسيق الأفقي المدمج للإجماليات والدفع */
+.pos-totals-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr;
+  gap: 0.6rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--ab-border-subtle);
+  align-items: center;
+}
+
+.pos-totals-summary-grid .pos-total-row {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.pos-totals-summary-grid .pos-total-row.grand {
+  border: none;
+  border-right: 1px dashed var(--ab-border);
+  padding-right: 0.75rem;
+}
+
+.pos-payment-details-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+}
+
+.pos-change-box {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.45rem 0.35rem;
-  background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
-  border: 1px solid var(--ab-border);
-  border-radius: 8px;
-  color: var(--ab-text-main);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.pos-grid-btn:hover {
-  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
-  border-color: var(--ab-cyan);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(56, 189, 248, 0.2);
-}
-
-.pos-grid-btn:active {
-  transform: translateY(0);
-}
-
-.pos-grid-btn .key-badge {
-  font-family: var(--font-latin);
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 0.1rem 0.45rem;
-  border-radius: 4px;
-  background: #090a10;
-  border: 1px solid #334155;
-  border-bottom: 2px solid var(--ab-cyan);
-  color: var(--ab-cyan);
-}
-
-.pos-grid-btn .label {
-  font-size: 0.76rem;
-  font-weight: 700;
-  display: flex;
   align-items: center;
-  gap: 0.3rem;
-}
-
-.pos-grid-btn.danger {
-  border-color: rgba(239, 68, 68, 0.3);
-}
-.pos-grid-btn.danger .key-badge {
-  border-bottom-color: #ef4444;
-  color: #f87171;
-}
-.pos-grid-btn.danger:hover {
-  border-color: #ef4444;
-  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
-}
-
-.pos-grid-btn.success {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: linear-gradient(180deg, rgba(16, 185, 129, 0.15) 0%, #0d1117 100%);
-}
-.pos-grid-btn.success .key-badge {
-  border-bottom-color: #10b981;
-  color: #34d399;
-}
-.pos-grid-btn.success:hover {
-  border-color: #10b981;
-  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-xs);
+  padding: 0.2rem 0.75rem;
+  min-width: 120px;
 }
 
 /* تمييز الصف النشط في سلة البيع */

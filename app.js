@@ -3693,7 +3693,7 @@
       if (cartSection) { cartSection.style.flex = '1'; cartSection.style.width = '100%'; cartSection.style.maxWidth = '100%'; }
       renderPOSCatalog();
       renderPOSCart();
-      const scanInp = document.getElementById('posBarcodeScanInput');
+      const scanInp = document.getElementById('posBarcodeInput') || document.getElementById('posBarcodeScanInput');
       if (scanInp) scanInp.focus();
     }
 
@@ -4121,7 +4121,7 @@
     }
 
     if (!prod) {
-      const scanInp = document.getElementById('posBarcodeScanInput');
+      const scanInp = document.getElementById('posBarcodeInput') || document.getElementById('posBarcodeScanInput');
       const q = scanInp ? scanInp.value.trim() : '';
       if (q) {
         prod = (appState.products || []).find(p => String(p.code).trim().toLowerCase() === q.toLowerCase() || (p.name || '').toLowerCase().includes(q.toLowerCase()));
@@ -5239,6 +5239,44 @@
   }
 
   // ==========================================================================
+  // 26.5. تهيئة القوائم المنسدلة الذكية بالسهم في شريط الإجراءات (Ribbon Dropdowns)
+  // ==========================================================================
+  function setupRibbonDropdowns() {
+    const groups = document.querySelectorAll('.ribbon-dropdown-group');
+    groups.forEach(group => {
+      const trigger = group.querySelector('.ribbon-dropdown-trigger');
+      if (trigger) {
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isActive = group.classList.contains('active');
+          groups.forEach(g => g.classList.remove('active'));
+          if (!isActive) {
+            group.classList.add('active');
+          }
+        });
+      }
+
+      // إغلاق القائمة فور النقر على أي زر خيار داخلها
+      const menu = group.querySelector('.ribbon-dropdown-menu');
+      if (menu) {
+        menu.addEventListener('click', (e) => {
+          const btn = e.target.closest('.ribbon-dropdown-item');
+          if (btn) {
+            group.classList.remove('active');
+          }
+        });
+      }
+    });
+
+    // إغلاق أي قائمة مفتوحة عند النقر خارجها
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.ribbon-dropdown-group')) {
+        groups.forEach(g => g.classList.remove('active'));
+      }
+    });
+  }
+
+  // ==========================================================================
   // 27. تحديث كافة عناصر الواجهة (Render All)
   // ==========================================================================
   function renderAll() {
@@ -5261,6 +5299,7 @@
     try {
       startLiveTime();
       setupModalsDismiss();
+      setupRibbonDropdowns();
       if (window.newTechDB) {
         await window.newTechDB.init();
       }
