@@ -799,6 +799,27 @@
       appState.payouts = savedPayouts ? JSON.parse(savedPayouts) : [];
     }
 
+    // إذا كان المخزن فارغاً لأول مرة، تهيئة أصناف جاهزة للبيع بأكواد رقمية متسلسلة من 1 إلى 10
+    if (!appState.products || appState.products.length === 0) {
+      appState.products = [
+        { id: 'prod_1', code: '1', name: 'شاحن لابتوب Dell أصلي 65W', category: 'شواحن ومحولات', unit: 'قطعة', costPrice: 220, salePrice: 320, stock: 15, minStock: 3, supplier: 'شركة النور للاستيراد' },
+        { id: 'prod_2', code: '2', name: 'شاحن لابتوب HP أصلي 45W', category: 'شواحن ومحولات', unit: 'قطعة', costPrice: 200, salePrice: 290, stock: 12, minStock: 3, supplier: 'شركة النور للاستيراد' },
+        { id: 'prod_3', code: '3', name: 'كابل شاشة HDMI مضفر 2 متر 4K', category: 'كابلات ووصلات', unit: 'قطعة', costPrice: 45, salePrice: 90, stock: 35, minStock: 5, supplier: 'تكنو مصر' },
+        { id: 'prod_4', code: '4', name: 'كابل شحن سريع Type-C أصلي', category: 'كابلات ووصلات', unit: 'قطعة', costPrice: 35, salePrice: 75, stock: 40, minStock: 5, supplier: 'تكنو مصر' },
+        { id: 'prod_5', code: '5', name: 'هارد كينجستون SSD 240GB A400', category: 'هاردات ورامات', unit: 'قطعة', costPrice: 450, salePrice: 600, stock: 10, minStock: 2, supplier: 'دلتا تكنولوجي' },
+        { id: 'prod_6', code: '6', name: 'هارد Lexar SSD NVMe M.2 512GB', category: 'هاردات ورامات', unit: 'قطعة', costPrice: 850, salePrice: 1150, stock: 8, minStock: 2, supplier: 'دلتا تكنولوجي' },
+        { id: 'prod_7', code: '7', name: 'رام Crucial 8GB DDR4 3200 لابتوب', category: 'هاردات ورامات', unit: 'قطعة', costPrice: 380, salePrice: 520, stock: 14, minStock: 3, supplier: 'دلتا تكنولوجي' },
+        { id: 'prod_8', code: '8', name: 'ماوس لاسلكي مريح Logitech M185', category: 'ملحقات وإكسسوارات', unit: 'قطعة', costPrice: 110, salePrice: 180, stock: 25, minStock: 4, supplier: 'البركة للتوريدات' },
+        { id: 'prod_9', code: '9', name: 'كيبورد وماوس سلكي Dell أصلي', category: 'ملحقات وإكسسوارات', unit: 'قطعة', costPrice: 160, salePrice: 250, stock: 18, minStock: 3, supplier: 'البركة للتوريدات' },
+        { id: 'prod_10', code: '10', name: 'معجون حراري تبريد Arctic MX-4 4g', category: 'صيانة ومستهلكات', unit: 'قطعة', costPrice: 90, salePrice: 150, stock: 20, minStock: 4, supplier: 'البركة للتوريدات' }
+      ];
+      if (window.newTechDB) {
+        appState.products.forEach(p => {
+          try { window.newTechDB.saveProduct(p); } catch(err) {}
+        });
+      }
+    }
+
     // تسلسل الأكواد الرقمية التلقائي من 1 إلى ما لا نهاية
     normalizeProductCodes();
     syncLocalStorageCache();
@@ -3694,8 +3715,8 @@
   // 22. نقطة البيع السحابية والكاشير (POS System Engine)
   // ==========================================================================
   function setupPOS() {
-    const scanInput = document.getElementById('posBarcodeScanInput');
-    const quickAddBtn = document.getElementById('btnPosQuickAdd');
+    const scanInput = document.getElementById('posBarcodeInput') || document.getElementById('posBarcodeScanInput');
+    const quickAddBtn = document.getElementById('posQuickAddBtn') || document.getElementById('btnPosQuickAdd');
     const discountInput = document.getElementById('posDiscountInput');
     const paidInput = document.getElementById('posPaidInput');
     const checkoutBtn = document.getElementById('posCheckoutBtn');
@@ -3711,7 +3732,28 @@
       });
     });
 
-    // مسح الباركود أو الكود الرقمي أو البحث الفوري
+    // البحث بالكود أو الباركود أو الاسم وإضافة الصنف مباشرة
+    function handleScanOrAdd() {
+      if (!scanInput) return;
+      const query = scanInput.value.trim();
+      if (!query) return;
+
+      // البحث أولاً بالكود الرقمي الدقيق
+      let match = (appState.products || []).find(p => String(p.code).trim().toLowerCase() === query.toLowerCase());
+      if (!match) {
+        match = (appState.products || []).find(p => (p.name || '').toLowerCase().includes(query.toLowerCase()));
+      }
+
+      if (match) {
+        addToCart(match);
+        scanInput.value = '';
+        appState.posSearch = '';
+        renderPOSCatalog();
+      } else {
+        alert(`⚠️ لم يتم العثور على صنف بالرمز أو الكود (${query}) في المخزن!`);
+      }
+    }
+
     if (scanInput) {
       scanInput.addEventListener('input', (e) => {
         appState.posSearch = e.target.value.trim().toLowerCase();
@@ -3721,25 +3763,13 @@
       scanInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          const query = scanInput.value.trim();
-          if (!query) return;
-
-          // البحث أولاً بالكود الدقيق (سواء رقم أو كود)
-          let match = (appState.products || []).find(p => String(p.code).trim().toLowerCase() === query.toLowerCase());
-          if (!match) {
-            match = (appState.products || []).find(p => (p.name || '').toLowerCase().includes(query.toLowerCase()));
-          }
-
-          if (match) {
-            addToCart(match);
-            scanInput.value = '';
-            appState.posSearch = '';
-            renderPOSCatalog();
-          } else {
-            showToast(`⚠️ لم يتم العثور على صنف بالرمز أو الاسم (${query})`);
-          }
+          handleScanOrAdd();
         }
       });
+    }
+
+    if (quickAddBtn) {
+      quickAddBtn.addEventListener('click', handleScanOrAdd);
     }
 
     // زر إضافة صنف حر سريع للسلة مباشرة
@@ -3951,6 +3981,7 @@
   }
 
   function addToCart(prod) {
+    if (!prod) return;
     const existing = appState.posCart.find(i => i.productId === prod.id || (i.code && String(i.code) === String(prod.code) && i.name === prod.name));
     if (existing) {
       existing.qty += 1;
@@ -3971,6 +4002,68 @@
     }
     renderPOSCart();
     playSoundAdd();
+    showToast(`🛒 تمت إضافة (${prod.name}) إلى الفاتورة`);
+  }
+
+  function renderPOSCatalog() {
+    const grid = document.getElementById('posProductsGrid');
+    const countEl = document.getElementById('posCatalogItemsCount');
+    if (!grid) return;
+
+    let prods = appState.products || [];
+
+    // فلتر الكاتجوري
+    if (appState.posCategory && appState.posCategory !== 'ALL') {
+      prods = prods.filter(p => p.category === appState.posCategory);
+    }
+
+    // فلتر البحث
+    if (appState.posSearch) {
+      const q = appState.posSearch;
+      prods = prods.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        String(p.code || '').toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q)
+      );
+    }
+
+    if (countEl) countEl.textContent = `${prods.length} صنف متاح`;
+
+    if (prods.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align:center; padding:3rem; color:var(--ab-text-dim);">
+          <i class="fa-solid fa-box-open" style="font-size:2.5rem; display:block; margin-bottom:0.75rem; opacity:0.3;"></i>
+          لا توجد أصناف مسجلة في هذا القسم. أضف أصنافاً جديدة عبر فاتورة مشتريات أو كارت المخزن.
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = prods.map(p => {
+      const isLow = (parseFloat(p.stock) || 0) <= (parseFloat(p.minStock) || 3);
+      const isOut = (parseFloat(p.stock) || 0) <= 0;
+      return `
+        <div class="pos-product-card ${isOut ? 'out-of-stock' : ''}" data-product-id="${p.id}" style="cursor:pointer;" title="انقر لإضافة (${escapeHtml(p.name)}) إلى الفاتورة">
+          <div class="card-cat-badge">${escapeHtml(p.category || 'عام')}</div>
+          <div class="card-prod-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
+          <div class="card-prod-code"><i class="fa-solid fa-barcode"></i> كود: ${escapeHtml(p.code)}</div>
+          <div class="card-bottom-row">
+            <div class="card-price">${Number(p.salePrice || p.costPrice || 0).toFixed(2)} <span style="font-size:0.75rem;">ج.م</span></div>
+            <div class="card-stock ${isLow ? 'low' : ''}">${isOut ? 'نفد' : 'متاح: ' + p.stock}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('.pos-product-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const pId = card.getAttribute('data-product-id');
+        const prod = (appState.products || []).find(p => p.id === pId);
+        if (prod) {
+          addToCart(prod);
+        }
+      });
+    });
   }
 
   function startPosInlineCodeEntry() {
