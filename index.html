@@ -197,6 +197,7 @@
         <span class="titlebar-menu-item active" id="menuPOS"><i class="fa-solid fa-cash-register"></i> نقطة البيع (POS)</span>
         <span class="titlebar-menu-item" id="menuRegister"><i class="fa-solid fa-table-list"></i> سجل المسحوبات</span>
         <span class="titlebar-menu-item" id="menuNewPurchase"><i class="fa-solid fa-cart-shopping"></i> فاتورة مشتريات</span>
+        <span class="titlebar-menu-item" id="menuSuppliers"><i class="fa-solid fa-truck-field"></i> الموردين</span>
         <span class="titlebar-menu-item" id="menuPayout"><i class="fa-solid fa-hand-holding-dollar"></i> صرف نقدية</span>
         <span class="titlebar-menu-item" id="menuStocktake"><i class="fa-solid fa-clipboard-check"></i> جرد المخزن</span>
         <span class="titlebar-menu-item" id="menuVouchers">سند قبض وصرف</span>
@@ -363,6 +364,11 @@
     </button>
 
     <div class="ribbon-separator"></div>
+
+    <button class="ribbon-btn" id="openSuppliersModalBtn" title="إدارة الموردين الذين تشتري منهم وإضافة موردين جدد">
+      <i class="fa-solid fa-truck-field" style="color:#38bdf8;"></i>
+      <span>الموردين</span>
+    </button>
 
     <button class="ribbon-btn" id="openCompaniesModalBtn" title="إدارة شركات المول والموردين">
       <i class="fa-solid fa-building-user"></i>
@@ -667,11 +673,21 @@
 
               <div class="pos-action-buttons">
                 <button type="button" class="btn-pos-checkout" id="posCheckoutBtn">
-                  <i class="fa-solid fa-print"></i> إتمام البيع وطباعة الفاتورة (F9)
+                  <i class="fa-solid fa-print"></i> حفظ الفاتورة وطباعتها (Ctrl + F10)
                 </button>
                 <button type="button" class="btn-pos-clear" id="posClearCartBtn" title="تفريغ الفاتورة">
                   <i class="fa-solid fa-trash"></i> إلغاء
                 </button>
+              </div>
+
+              <!-- شريط مفاتيح الاختصارات السريعة للكاشير -->
+              <div class="pos-shortcuts-bar">
+                <div class="pos-shortcut-badge" id="shortcutF12Btn" title="إضافة سطر جديد لإدخال كود الصنف"><kbd>F12</kbd> <span>سطر جديد</span></div>
+                <div class="pos-shortcut-badge" id="shortcutF5Btn" title="عرض كافة بيانات وتفاصيل الصنف"><kbd>F5</kbd> <span>بيانات المنتج</span></div>
+                <div class="pos-shortcut-badge" id="shortcutF4Btn" title="عرض تكلفة الصنف وسعر الشراء"><kbd>F4</kbd> <span>تكلفتي</span></div>
+                <div class="pos-shortcut-badge" id="shortcutF2Btn" title="عرض كل حركات بيع الصنف بالتاريخ والوقت"><kbd>F2</kbd> <span>حركات البيع</span></div>
+                <div class="pos-shortcut-badge" id="shortcutCtrlDelBtn" title="حذف الصنف المحدد من شاشة البيع"><kbd>Ctrl+Del</kbd> <span>حذف منتج</span></div>
+                <div class="pos-shortcut-badge highlight" id="shortcutCtrlF10Btn" title="حفظ الفاتورة وإتمام البيع والطباعة"><kbd>Ctrl+F10</kbd> <span>حفظ الفاتورة</span></div>
               </div>
             </div>
           </div>
@@ -2195,6 +2211,261 @@
 
       <div class="modal-footer">
         <button type="button" class="btn-dialog-secondary" data-close-modal="salesHistoryModal">إغلاق</button>
+      </div>
+  <!-- ============================================================ -->
+  <!-- MODAL 17: إدارة الموردين الذين تشتري منهم وإضافة موردين جدد   -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="suppliersModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-truck-field" style="color:#38bdf8;"></i> إدارة الموردين والشركات الموردة</h3>
+        <button class="modal-close-btn" data-close-modal="suppliersModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- نموذج تسجيل وتعديل مورد جديد -->
+        <form id="supplierForm" style="background:var(--ab-bg-input); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--ab-border); margin-bottom:1.5rem;">
+          <input type="hidden" id="editSupplierId" value="">
+          <div style="font-weight:700; color:#38bdf8; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+            <span id="supplierFormTitle"><i class="fa-solid fa-user-plus"></i> تسجيل مورد جديد تشتري منه:</span>
+            <button type="button" id="cancelEditSupplierBtn" class="btn-cell-tool" style="display:none; color:var(--ab-unpaid); font-size:0.8rem;">إلغاء التعديل</button>
+          </div>
+
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label>اسم المورد / الشركة الموردة:</label>
+              <input type="text" id="supplierNameInput" class="form-control" placeholder="مثال: شركة النور للاستيراد / م. محمد علي..." required>
+            </div>
+            <div class="form-group">
+              <label>المسؤول أو مندوب التوريد:</label>
+              <input type="text" id="supplierContactPersonInput" class="form-control" placeholder="اسم المندوب أو جهة الاتصال...">
+            </div>
+            <div class="form-group">
+              <label>رقم الهاتف / الواتساب:</label>
+              <input type="text" id="supplierPhoneInput" class="form-control text-ltr" placeholder="010xxxxxxxx">
+            </div>
+          </div>
+
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label>العنوان / المحافظة:</label>
+              <input type="text" id="supplierAddressInput" class="form-control" placeholder="العنوان أو الفرع أو مقر المخزن...">
+            </div>
+            <div class="form-group">
+              <label>نوع البضائع والتوريد:</label>
+              <input type="text" id="supplierCategoryInput" class="form-control" placeholder="مثال: إلكترونيات، شواحن وكابلات، قطع غيار...">
+            </div>
+            <div class="form-group">
+              <label>الرصيد الافتتاحي (ج.م):</label>
+              <div style="display:flex; gap:0.4rem;">
+                <input type="number" id="supplierOpeningBalanceInput" class="form-control text-ltr" value="0" step="0.5" placeholder="0.00" style="font-weight:700;">
+                <select id="supplierBalanceTypeSelect" class="form-control" style="width:115px; font-size:0.75rem;">
+                  <option value="CREDIT" selected>له علينا (دائن)</option>
+                  <option value="DEBIT">لنا عنده (مدين)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0.75rem;">
+              <label>ملاحظات إضافية عن المورد:</label>
+              <input type="text" id="supplierNotesInput" class="form-control" placeholder="مواعيد التوريد، تسهيلات الدفع، حساب بنكي، كود ضريبي...">
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="submit" class="btn-dialog-primary" id="saveSupplierSubmitBtn" style="background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+              <i class="fa-solid fa-check"></i> حفظ المورد
+            </button>
+          </div>
+        </form>
+
+        <!-- جدول قائمة الموردين والبحث -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+          <input type="text" id="suppliersSearchInput" class="form-control" style="max-width:280px;" placeholder="بحث باسم المورد، المندوب، أو الهاتف...">
+          <div style="font-size:0.85rem; color:var(--ab-text-muted);">
+            عدد الموردين: <strong id="suppliersCountBadge" style="color:var(--ab-cyan);">0</strong> مورد
+          </div>
+        </div>
+
+        <div style="max-height:300px; overflow-y:auto; border:1px solid var(--ab-border);">
+          <table class="ab-desktop-table" style="width:100%;">
+            <thead>
+              <tr>
+                <th style="min-width:140px;">اسم المورد</th>
+                <th style="width:110px;">المندوب</th>
+                <th style="width:110px;">الهاتف</th>
+                <th style="min-width:120px;">النشاط / العنوان</th>
+                <th style="width:90px; text-align:center;">فواتير الشراء</th>
+                <th style="width:115px;">الرصيد الحالي</th>
+                <th style="width:120px; text-align:center;">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="suppliersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="suppliersModal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 18: بطاقة بيانات وتفاصيل المنتج الشاملة (F5)            -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="productDetailsModal">
+    <div class="modal-dialog" style="max-width:540px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-circle-info" style="color:#38bdf8;"></i> بطاقة بيانات الصنف الشاملة (F5)</h3>
+        <button class="modal-close-btn" data-close-modal="productDetailsModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="background:var(--ab-bg-input); border:1px solid var(--ab-border); border-radius:12px; padding:1.25rem; margin-bottom:1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+            <div>
+              <span id="detailProdCategoryBadge" class="card-cat-badge" style="display:inline-block; margin-bottom:0.4rem;">عام</span>
+              <h3 id="detailProdName" style="margin:0; font-size:1.25rem; font-weight:800; color:#fff;">اسم الصنف</h3>
+            </div>
+            <div style="text-align:left;">
+              <span style="font-size:0.7rem; color:var(--ab-text-dim); display:block;">كود الصنف الرقمي</span>
+              <code id="detailProdCode" class="cell-code text-ltr" style="font-size:1.1rem; font-weight:800; color:var(--ab-cyan);">#1</code>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:1rem; border-top:1px solid var(--ab-border-subtle); padding-top:1rem;">
+            <div style="background:rgba(255,255,255,0.02); padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:0.75rem; color:var(--ab-text-muted); display:block;">سعر التكلفة (سعر الشراء):</span>
+              <strong id="detailProdCostPrice" style="font-family:var(--font-latin); font-size:1.15rem; color:#f59e0b;">0.00 ج.م</strong>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.02); padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:0.75rem; color:var(--ab-text-muted); display:block;">سعر البيع للزبون:</span>
+              <strong id="detailProdSalePrice" style="font-family:var(--font-latin); font-size:1.15rem; color:#10b981;">0.00 ج.م</strong>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.02); padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:0.75rem; color:var(--ab-text-muted); display:block;">هامش الربح المتوقع:</span>
+              <strong id="detailProdProfit" style="font-family:var(--font-latin); font-size:1.05rem; color:var(--ab-cyan);">+0.00 ج.م (+0%)</strong>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.02); padding:0.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+              <span style="font-size:0.75rem; color:var(--ab-text-muted); display:block;">الرصيد الحالي بالمخزن:</span>
+              <strong id="detailProdStock" style="font-family:var(--font-latin); font-size:1.15rem; color:#38bdf8;">0 قطعة</strong>
+            </div>
+          </div>
+
+          <div style="margin-top:1rem; font-size:0.8rem; color:var(--ab-text-muted); display:flex; flex-direction:column; gap:0.4rem; border-top:1px solid var(--ab-border-subtle); padding-top:0.75rem;">
+            <div><i class="fa-solid fa-truck" style="color:var(--ab-cyan);"></i> المورد المسجل: <span id="detailProdSupplier" style="color:var(--ab-text-main); font-weight:700;">-</span></div>
+            <div><i class="fa-solid fa-calendar-days" style="color:#10b981;"></i> تاريخ التسجيل: <span id="detailProdCreatedAt" style="color:var(--ab-text-main);">--</span></div>
+            <div><i class="fa-solid fa-note-sticky" style="color:#f59e0b;"></i> ملاحظات: <span id="detailProdNotes" style="color:var(--ab-text-main);">-</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; gap:0.5rem;">
+          <button type="button" class="btn-pos-tool" id="detailOpenSalesHistoryBtn" style="flex:1;">
+            <i class="fa-solid fa-clock-rotate-left" style="color:var(--ab-cyan);"></i> عرض حركات بيع هذا الصنف (F2)
+          </button>
+          <button type="button" class="btn-pos-tool" id="detailOpenCostBtn" style="flex:1;">
+            <i class="fa-solid fa-sack-dollar" style="color:#f59e0b;"></i> عرض تكلفتي للمنتج (F4)
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="productDetailsModal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 19: استعلام تكلفتي للمنتج وهامش الربح السري (F4)        -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="productCostModal">
+    <div class="modal-dialog" style="max-width:400px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sack-dollar" style="color:#f59e0b;"></i> استعلام تكلفتي للمنتج (F4)</h3>
+        <button class="modal-close-btn" data-close-modal="productCostModal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="text-align:center;">
+        <div style="background:#090a10; border:1.5px solid #f59e0b; border-radius:14px; padding:1.25rem; box-shadow:0 0 25px rgba(245, 158, 11, 0.2);">
+          <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:0.25rem;">الصنف المحدد:</div>
+          <strong id="costModalProdName" style="font-size:1.15rem; color:#fff; display:block; margin-bottom:0.75rem;">--</strong>
+          <div style="display:inline-block; background:rgba(56, 189, 248, 0.1); border:1px solid rgba(56, 189, 248, 0.3); border-radius:6px; padding:0.15rem 0.6rem; font-family:monospace; color:#38bdf8; font-size:0.85rem; margin-bottom:1rem;">
+            كود: <span id="costModalProdCode">--</span>
+          </div>
+
+          <div style="border-top:1px dashed #334155; padding-top:1rem; margin-top:0.5rem; display:flex; flex-direction:column; gap:0.6rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.85rem; color:#94a3b8;">سعر تكلفتك (الشراء):</span>
+              <strong id="costModalCostPrice" style="font-family:var(--font-latin); font-size:1.35rem; color:#f59e0b;">0.00 ج.م</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.85rem; color:#94a3b8;">سعر البيع للزبون:</span>
+              <strong id="costModalSalePrice" style="font-family:var(--font-latin); font-size:1.15rem; color:#10b981;">0.00 ج.م</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #1e293b; padding-top:0.5rem;">
+              <span style="font-size:0.85rem; color:var(--ab-cyan); font-weight:700;">صافي ربحك في القطعة:</span>
+              <strong id="costModalNetProfit" style="font-family:var(--font-latin); font-size:1.25rem; color:#38bdf8;">+0.00 ج.م</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="productCostModal">إغلاق (Esc)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL 20: سجل عمليات بيع الصنف بالتاريخ والوقت (F2)          -->
+  <!-- ============================================================ -->
+  <div class="modal-backdrop" id="productSalesHistoryModal">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-clock-rotate-left" style="color:var(--ab-cyan);"></i> عمليات بيع الصنف بالتاريخ والوقت (F2)</h3>
+        <button class="modal-close-btn" data-close-modal="productSalesHistoryModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem; background:var(--ab-bg-input); padding:0.75rem 1rem; border-radius:10px; border:1px solid var(--ab-border);">
+          <div>
+            <h4 id="prodHistModalTitle" style="margin:0; font-size:1.05rem; color:#fff;">سجل مبيعات الصنف</h4>
+            <span id="prodHistModalCode" style="font-size:0.78rem; color:var(--ab-cyan); font-family:monospace;">كود: --</span>
+          </div>
+          <div style="display:flex; gap:1.25rem; font-size:0.85rem;">
+            <div>إجمالي المباع: <strong id="prodHistTotalQtySold" style="color:#10b981;">0 قطعة</strong></div>
+            <div>إجمالي الإيراد: <strong id="prodHistTotalRevenue" style="color:var(--ab-cyan); font-family:var(--font-latin);">0.00 ج.م</strong></div>
+          </div>
+        </div>
+
+        <div style="max-height:340px; overflow-y:auto; border:1px solid var(--ab-border);">
+          <table class="ab-desktop-table" style="width:100%;">
+            <thead>
+              <tr>
+                <th style="width:40px;">م</th>
+                <th style="width:110px;">رقم الفاتورة</th>
+                <th style="width:140px;">التاريخ والوقت</th>
+                <th style="min-width:130px;">العميل</th>
+                <th style="width:80px; text-align:center;">الكمية</th>
+                <th style="width:95px; text-align:center;">سعر البيع</th>
+                <th style="width:110px;">الإجمالي</th>
+                <th style="width:100px;">طريقة الدفع</th>
+                <th style="width:90px;">الكاشير</th>
+              </tr>
+            </thead>
+            <tbody id="productSalesHistoryTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-dialog-secondary" data-close-modal="productSalesHistoryModal">إغلاق</button>
       </div>
     </div>
   </div>

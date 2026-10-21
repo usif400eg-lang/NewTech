@@ -37,6 +37,9 @@
     sales: [],           // فواتير مبيعات الكاشير POS
     payouts: [],         // أذونات صرف نقدية من الدرج
     posCart: [],         // سلة مشتريات الكاشير الحالية
+    activeCartItemId: null, // الصنف النشط المحدد في سلة الكاشير
+    posInlinePending: false, // حالة فتح سطر جديد لكتابة الكود بالترتيب (F12)
+    currentInspectedProduct: null, // الصنف المعروض للاستعلام (F5, F4, F2)
     activeView: 'POS',   // 'POS' | 'REGISTER'
     posCategory: 'ALL',
     posSearch: '',
@@ -796,7 +799,47 @@
       appState.payouts = savedPayouts ? JSON.parse(savedPayouts) : [];
     }
 
+    // تسلسل الأكواد الرقمية التلقائي من 1 إلى ما لا نهاية
+    normalizeProductCodes();
     syncLocalStorageCache();
+  }
+
+  // توليد الكود الرقمي التسلسلي التالي تلقائياً من 1 إلى ما لا نهاية
+  function getNextProductCode() {
+    if (!appState.products || appState.products.length === 0) return 1;
+    let maxCode = 0;
+    appState.products.forEach(p => {
+      const num = parseInt(p.code, 10);
+      if (!isNaN(num) && num > maxCode) {
+        maxCode = num;
+      }
+    });
+    return maxCode + 1;
+  }
+
+  // تسوية وترتيب كافة الأكواد لتبدأ متسلسلة ونظيفة
+  function normalizeProductCodes() {
+    let changed = false;
+    let currentCode = 1;
+    (appState.products || []).forEach(p => {
+      const num = parseInt(p.code, 10);
+      if (isNaN(num) || num <= 0) {
+        while ((appState.products || []).some(other => parseInt(other.code, 10) === currentCode)) {
+          currentCode++;
+        }
+        p.code = String(currentCode);
+        currentCode++;
+        changed = true;
+      }
+    });
+    if (changed) {
+      syncLocalStorageCache();
+      if (window.newTechDB) {
+        (appState.products || []).forEach(p => {
+          try { window.newTechDB.saveProduct(p); } catch(e) {}
+        });
+      }
+    }
   }
 
   function syncLocalStorageCache() {
@@ -1462,13 +1505,14 @@
     const tbody = document.getElementById('purchaseItemsTableBody');
     if (!tbody) return;
 
-    // توليد كود رقمي عشوائي مقترح للصنف
-    const nextNumericCode = Math.floor(100 + Math.random() * 900);
+    // توليد كود رقمي تسلسلي بالترتيب من 1 إلى ما لا نهاية
+    const existingRows = tbody.querySelectorAll('tr').length;
+    const nextNumericCode = getNextProductCode() + existingRows;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="text" class="row-item-name" placeholder="اسم الصنف المشتَرى..." required></td>
-      <td><input type="number" class="row-item-code text-ltr" value="${nextNumericCode}" placeholder="كود رقمي" required style="width:85px; text-align:center;"></td>
+      <td><input type="number" class="row-item-code text-ltr" value="${nextNumericCode}" min="1" step="1" placeholder="كود رقمي" required style="width:85px; text-align:center; font-weight:800; color:var(--ab-cyan);"></td>
       <td>
         <select class="row-item-cat form-control" style="font-size:0.8rem; padding:0.2rem 0.4rem; background:var(--ab-bg-input); color:var(--ab-text-main); border:1px solid var(--ab-border);">
           <option value="شواحن ومحولات">شواحن ومحولات</option>
@@ -3402,7 +3446,7 @@
       document.getElementById('saveProdSubmitBtn').innerHTML = '<i class="fa-solid fa-save"></i> حفظ الصنف في المخزن';
       if (cancelEditBtn) cancelEditBtn.style.display = 'none';
       const codeInp = document.getElementById('prodCodeInput');
-      if (codeInp) codeInp.value = 'NT-' + Math.floor(100 + Math.random() * 900);
+      if (codeInp) codeInp.value = String(getNextProductCode());
     }
 
     if (cancelEditBtn) {
@@ -3734,6 +3778,8 @@
         if (appState.posCart.length === 0) return;
         if (confirm('هل أنت متأكد من إلغاء الفاتورة الحالية وتفريغ السلة؟')) {
           appState.posCart = [];
+          appState.activeCartItemId = null;
+          appState.posInlinePending = false;
           renderPOSCart();
           playSoundUnpay();
           showToast('تم تفريغ الفاتورة');
@@ -3746,27 +3792,59 @@
       checkoutBtn.addEventListener('click', checkoutPOS);
     }
 
-    // اختصار F9 لإتمام البيع فوراً
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'F9') {
-        e.preventDefault();
-        checkoutPOS();
-      }
-    });
+    // ربط نقر شريط الاختصارات السريعة أسفل السلة
+    const shortcutF12 = document.getElementById('shortcutF12Btn');
+    if (shortcutF12) shortcutF12.addEventListener('click', startPosInlineCodeEntry);
 
-    // أحداث السلة (زيادة، نقص، حذف)
+    const shortcutF5 = document.getElementById('shortcutF5Btn');
+    if (shortcutF5) shortcutF5.addEventListener('click', () => openProductDetailsModal());
+
+    const shortcutF4 = document.getElementById('shortcutF4Btn');
+    if (shortcutF4) shortcutF4.addEventListener('click', () => openProductCostModal());
+
+    const shortcutF2 = document.getElementById('shortcutF2Btn');
+    if (shortcutF2) shortcutF2.addEventListener('click', () => openProductSalesHistoryModal());
+
+    const shortcutCtrlDel = document.getElementById('shortcutCtrlDelBtn');
+    if (shortcutCtrlDel) shortcutCtrlDel.addEventListener('click', deleteActiveOrLastCartItem);
+
+    const shortcutCtrlF10 = document.getElementById('shortcutCtrlF10Btn');
+    if (shortcutCtrlF10) shortcutCtrlF10.addEventListener('click', checkoutPOS);
+
+    // ربط الأزرار التفاعلية داخل بطاقة الصنف الشاملة F5
+    const detailSalesBtn = document.getElementById('detailOpenSalesHistoryBtn');
+    if (detailSalesBtn) {
+      detailSalesBtn.addEventListener('click', () => {
+        const prod = appState.currentInspectedProduct;
+        closeModal('productDetailsModal');
+        openProductSalesHistoryModal(prod);
+      });
+    }
+
+    const detailCostBtn = document.getElementById('detailOpenCostBtn');
+    if (detailCostBtn) {
+      detailCostBtn.addEventListener('click', () => {
+        const prod = appState.currentInspectedProduct;
+        closeModal('productDetailsModal');
+        openProductCostModal(prod);
+      });
+    }
+
+    // أحداث السلة (تحديد الصنف النشط، زيادة، نقص، حذف)
     const cartTbody = document.getElementById('posCartTableBody');
     if (cartTbody) {
       cartTbody.addEventListener('click', (e) => {
         const incBtn = e.target.closest('[data-cart-action="inc"]');
         const decBtn = e.target.closest('[data-cart-action="dec"]');
         const delBtn = e.target.closest('[data-cart-action="del"]');
+        const row = e.target.closest('tr[data-cart-row-id]');
 
         if (incBtn) {
           const id = incBtn.getAttribute('data-id');
           const item = appState.posCart.find(i => i.id === id);
           if (item) {
             item.qty += 1;
+            appState.activeCartItemId = item.id;
             renderPOSCart();
             playSoundAdd();
           }
@@ -3779,8 +3857,10 @@
           if (item) {
             if (item.qty > 1) {
               item.qty -= 1;
+              appState.activeCartItemId = item.id;
             } else {
               appState.posCart = appState.posCart.filter(i => i.id !== id);
+              if (appState.activeCartItemId === id) appState.activeCartItemId = null;
             }
             renderPOSCart();
             playSoundUnpay();
@@ -3791,9 +3871,21 @@
         if (delBtn) {
           const id = delBtn.getAttribute('data-id');
           appState.posCart = appState.posCart.filter(i => i.id !== id);
+          if (appState.activeCartItemId === id) appState.activeCartItemId = null;
           renderPOSCart();
           playSoundDelete();
           return;
+        }
+
+        if (row) {
+          const rowId = row.getAttribute('data-cart-row-id');
+          if (rowId) {
+            appState.activeCartItemId = rowId;
+            // تحديث تمييز السطر النشط
+            cartTbody.querySelectorAll('tr[data-cart-row-id]').forEach(tr => {
+              tr.classList.toggle('is-active-row', tr.getAttribute('data-cart-row-id') === rowId);
+            });
+          }
         }
       });
     }
@@ -3813,8 +3905,9 @@
     const existing = appState.posCart.find(i => i.productId === prod.id || (i.code && String(i.code) === String(prod.code) && i.name === prod.name));
     if (existing) {
       existing.qty += 1;
+      appState.activeCartItemId = existing.id;
     } else {
-      appState.posCart.push({
+      const newItem = {
         id: 'cart_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
         productId: prod.id,
         code: prod.code || '',
@@ -3823,69 +3916,282 @@
         costPrice: Number(prod.costPrice) || 0,
         salePrice: Number(prod.salePrice) || Number(prod.costPrice) || 0,
         qty: 1
-      });
+      };
+      appState.posCart.push(newItem);
+      appState.activeCartItemId = newItem.id;
     }
     renderPOSCart();
     playSoundAdd();
   }
 
-  function renderPOSCatalog() {
-    const grid = document.getElementById('posProductsGrid');
-    const countEl = document.getElementById('posCatalogItemsCount');
-    if (!grid) return;
+  function startPosInlineCodeEntry() {
+    appState.posInlinePending = true;
+    renderPOSCart();
+    setTimeout(() => {
+      const inp = document.getElementById('posInlineCodeInput');
+      if (inp) {
+        inp.focus();
+        inp.select();
+      }
+    }, 40);
+  }
 
-    let prods = appState.products || [];
-
-    // فلتر الكاتجوري
-    if (appState.posCategory && appState.posCategory !== 'ALL') {
-      prods = prods.filter(p => p.category === appState.posCategory);
+  function getActiveOrQueriedProduct() {
+    let prod = null;
+    if (appState.activeCartItemId) {
+      const cItem = (appState.posCart || []).find(i => i.id === appState.activeCartItemId);
+      if (cItem) {
+        prod = (appState.products || []).find(p => p.id === cItem.productId || (p.code && String(p.code) === String(cItem.code)));
+        if (!prod) {
+          prod = {
+            id: cItem.productId || cItem.id,
+            name: cItem.name,
+            code: cItem.code,
+            category: cItem.category,
+            costPrice: cItem.costPrice,
+            salePrice: cItem.salePrice,
+            stock: 'غير محدد'
+          };
+        }
+      }
     }
 
-    // فلتر البحث
-    if (appState.posSearch) {
-      const q = appState.posSearch;
-      prods = prods.filter(p =>
-        (p.name || '').toLowerCase().includes(q) ||
-        String(p.code || '').toLowerCase().includes(q) ||
-        (p.category || '').toLowerCase().includes(q)
+    if (!prod && appState.posCart && appState.posCart.length > 0) {
+      const cItem = appState.posCart[appState.posCart.length - 1];
+      appState.activeCartItemId = cItem.id;
+      prod = (appState.products || []).find(p => p.id === cItem.productId || (p.code && String(p.code) === String(cItem.code)));
+      if (!prod) {
+        prod = {
+          id: cItem.productId || cItem.id,
+          name: cItem.name,
+          code: cItem.code,
+          category: cItem.category,
+          costPrice: cItem.costPrice,
+          salePrice: cItem.salePrice,
+          stock: 'غير محدد'
+        };
+      }
+    }
+
+    if (!prod) {
+      const scanInp = document.getElementById('posBarcodeScanInput');
+      const q = scanInp ? scanInp.value.trim() : '';
+      if (q) {
+        prod = (appState.products || []).find(p => String(p.code).trim().toLowerCase() === q.toLowerCase() || (p.name || '').toLowerCase().includes(q.toLowerCase()));
+      }
+    }
+
+    if (!prod) {
+      const code = prompt('يرجى كتابة كود الصنف الرقمي للاستعلام:');
+      if (code) {
+        prod = (appState.products || []).find(p => String(p.code).trim() === code.trim());
+        if (!prod) {
+          alert(`عذراً، لا يوجد صنف في المخزن يحمل الكود رقم (${code})`);
+          return null;
+        }
+      }
+    }
+
+    return prod;
+  }
+
+  function openProductDetailsModal(prod) {
+    if (!prod) prod = getActiveOrQueriedProduct();
+    if (!prod) return;
+
+    appState.currentInspectedProduct = prod;
+    const nameEl = document.getElementById('detailProdName');
+    const codeEl = document.getElementById('detailProdCode');
+    const catEl = document.getElementById('detailProdCategoryBadge');
+    const costEl = document.getElementById('detailProdCostPrice');
+    const saleEl = document.getElementById('detailProdSalePrice');
+    const profitEl = document.getElementById('detailProdProfit');
+    const stockEl = document.getElementById('detailProdStock');
+    const supEl = document.getElementById('detailProdSupplier');
+    const dateEl = document.getElementById('detailProdCreatedAt');
+    const notesEl = document.getElementById('detailProdNotes');
+
+    if (nameEl) nameEl.textContent = prod.name;
+    if (codeEl) codeEl.textContent = '#' + (prod.code || '-');
+    if (catEl) catEl.textContent = prod.category || 'عام';
+
+    const cost = parseFloat(prod.costPrice) || 0;
+    const sale = parseFloat(prod.salePrice || prod.costPrice) || 0;
+    const profit = sale - cost;
+    const profitPct = cost > 0 ? ((profit / cost) * 100).toFixed(1) : '100';
+
+    if (costEl) costEl.textContent = `${cost.toFixed(2)} ج.م`;
+    if (saleEl) saleEl.textContent = `${sale.toFixed(2)} ج.م`;
+    if (profitEl) profitEl.textContent = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ج.م (${profitPct}%)`;
+    if (stockEl) stockEl.textContent = `${prod.stock || 0} قطعة`;
+    if (supEl) supEl.textContent = prod.supplier || 'المورد الرئيسي';
+    if (dateEl) dateEl.textContent = prod.createdAt ? formatDateStr(new Date(prod.createdAt)) : '--';
+    if (notesEl) notesEl.textContent = prod.notes || 'لا توجد ملاحظات مسجلة';
+
+    openModal('productDetailsModal');
+  }
+
+  function openProductCostModal(prod) {
+    if (!prod) prod = getActiveOrQueriedProduct();
+    if (!prod) return;
+
+    appState.currentInspectedProduct = prod;
+    const nameEl = document.getElementById('costModalProdName');
+    const codeEl = document.getElementById('costModalProdCode');
+    const costEl = document.getElementById('costModalCostPrice');
+    const saleEl = document.getElementById('costModalSalePrice');
+    const profitEl = document.getElementById('costModalNetProfit');
+
+    if (nameEl) nameEl.textContent = prod.name;
+    if (codeEl) codeEl.textContent = '#' + (prod.code || '-');
+
+    const cost = parseFloat(prod.costPrice) || 0;
+    const sale = parseFloat(prod.salePrice || prod.costPrice) || 0;
+    const profit = sale - cost;
+    const profitPct = cost > 0 ? ((profit / cost) * 100).toFixed(1) : '100';
+
+    if (costEl) costEl.textContent = `${cost.toFixed(2)} ج.م`;
+    if (saleEl) saleEl.textContent = `${sale.toFixed(2)} ج.م`;
+    if (profitEl) profitEl.textContent = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)} ج.م (${profitPct}%)`;
+
+    openModal('productCostModal');
+  }
+
+  function openProductSalesHistoryModal(prod) {
+    if (!prod) prod = getActiveOrQueriedProduct();
+    if (!prod) return;
+
+    appState.currentInspectedProduct = prod;
+    const titleEl = document.getElementById('prodHistModalTitle');
+    const codeEl = document.getElementById('prodHistModalCode');
+    const qtyEl = document.getElementById('prodHistTotalQtySold');
+    const revEl = document.getElementById('prodHistTotalRevenue');
+    const tbody = document.getElementById('productSalesHistoryTableBody');
+
+    if (titleEl) titleEl.textContent = `سجل مبيعات الصنف: ${prod.name}`;
+    if (codeEl) codeEl.textContent = `كود: #${prod.code}`;
+
+    let totalQty = 0;
+    let totalRevenue = 0;
+    let rowsHtml = '';
+    let rowIdx = 1;
+
+    (appState.sales || []).forEach(sale => {
+      const matched = (sale.items || []).filter(it => 
+        it.productId === prod.id || 
+        (it.code && String(it.code) === String(prod.code)) || 
+        it.name === prod.name
       );
+
+      matched.forEach(it => {
+        const lineTotal = (it.qty || 1) * (parseFloat(it.salePrice) || 0);
+        totalQty += (it.qty || 1);
+        totalRevenue += lineTotal;
+
+        rowsHtml += `
+          <tr>
+            <td style="text-align:center;">${rowIdx++}</td>
+            <td><code class="cell-code text-ltr">${escapeHtml(sale.invoiceNumber)}</code></td>
+            <td><small>${escapeHtml(sale.date)} ${escapeHtml(sale.time)}</small></td>
+            <td><strong>${escapeHtml(sale.customerName || 'عميل نقدي')}</strong></td>
+            <td style="text-align:center; font-weight:800; color:#38bdf8;">${it.qty || 1}</td>
+            <td style="text-align:center; font-family:var(--font-latin);">${Number(it.salePrice).toFixed(2)}</td>
+            <td style="font-weight:800; color:#10b981; font-family:var(--font-latin);">${lineTotal.toFixed(2)} ج.م</td>
+            <td><small style="color:var(--ab-cyan);">${escapeHtml(sale.paymentMethod || 'كاش')}</small></td>
+            <td><small>${escapeHtml(sale.userName || 'admin')}</small></td>
+          </tr>
+        `;
+      });
+    });
+
+    if (qtyEl) qtyEl.textContent = `${totalQty} قطعة`;
+    if (revEl) revEl.textContent = `${totalRevenue.toFixed(2)} ج.م`;
+
+    if (tbody) {
+      if (rowsHtml) {
+        tbody.innerHTML = rowsHtml;
+      } else {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--ab-text-dim);">لم يتم تسجيل أي عمليات بيع سابقة لهذا الصنف حتى الآن</td></tr>`;
+      }
     }
 
-    if (countEl) countEl.textContent = `${prods.length} صنف متاح`;
+    openModal('productSalesHistoryModal');
+  }
 
-    if (prods.length === 0) {
-      grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align:center; padding:3rem; color:var(--ab-text-dim);">
-          <i class="fa-solid fa-box-open" style="font-size:2.5rem; display:block; margin-bottom:0.75rem; opacity:0.3;"></i>
-          لا توجد أصناف مسجلة في هذا القسم. أضف أصنافاً جديدة عبر فاتورة مشتريات أو كارت المخزن.
-        </div>
-      `;
+  function deleteActiveOrLastCartItem() {
+    if (!appState.posCart || appState.posCart.length === 0) {
+      showToast('سلة الفاتورة فارغة بالفعل');
       return;
     }
 
-    grid.innerHTML = prods.map(p => {
-      const isLow = (parseFloat(p.stock) || 0) <= (parseFloat(p.minStock) || 3);
-      const isOut = (parseFloat(p.stock) || 0) <= 0;
-      return `
-        <div class="pos-product-card ${isOut ? 'out-of-stock' : ''}" data-product-id="${p.id}">
-          <div class="card-cat-badge">${escapeHtml(p.category || 'عام')}</div>
-          <div class="card-prod-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</div>
-          <div class="card-prod-code"><i class="fa-solid fa-barcode"></i> كود: ${escapeHtml(p.code)}</div>
-          <div class="card-bottom-row">
-            <div class="card-price">${Number(p.salePrice || p.costPrice || 0).toFixed(2)} <span style="font-size:0.75rem;">ج.م</span></div>
-            <div class="card-stock ${isLow ? 'low' : ''}">${isOut ? 'نفد' : 'متاح: ' + p.stock}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
+    let removedName = '';
+    if (appState.activeCartItemId) {
+      const idx = appState.posCart.findIndex(i => i.id === appState.activeCartItemId);
+      if (idx !== -1) {
+        removedName = appState.posCart[idx].name;
+        appState.posCart.splice(idx, 1);
+      }
+      appState.activeCartItemId = null;
+    } else {
+      const last = appState.posCart.pop();
+      if (last) removedName = last.name;
+    }
 
-    grid.querySelectorAll('.pos-product-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const pId = card.getAttribute('data-product-id');
-        const prod = (appState.products || []).find(p => p.id === pId);
-        if (prod) addToCart(prod);
-      });
-    });
+    renderPOSCart();
+    playSoundDelete();
+    showToast(`🗑️ تم حذف ${removedName || 'الصنف'} من شاشة البيع`);
+  }
+
+  function setupPOSKeyboardShortcuts() {
+    window.addEventListener('keydown', (e) => {
+      // F12: إضافة سطر جديد لمنتج داخل شاشة البيع لكتابة الكود
+      if (e.key === 'F12') {
+        e.preventDefault();
+        e.stopPropagation();
+        startPosInlineCodeEntry();
+        return;
+      }
+
+      // F5: عرض كل بيانات المنتج من اسمه أو سعره أو تكلفته
+      if (e.key === 'F5') {
+        e.preventDefault();
+        e.stopPropagation();
+        openProductDetailsModal();
+        return;
+      }
+
+      // F4: عرض تكلفتي للمنتج
+      if (e.key === 'F4') {
+        e.preventDefault();
+        e.stopPropagation();
+        openProductCostModal();
+        return;
+      }
+
+      // F2: عرض كل عمليات البيع الخاصة بالمنتج بالتاريخ والوقت
+      if (e.key === 'F2') {
+        e.preventDefault();
+        e.stopPropagation();
+        openProductSalesHistoryModal();
+        return;
+      }
+
+      // Ctrl + Delete: حذف منتج من شاشة البيع
+      if (e.ctrlKey && (e.key === 'Delete' || e.code === 'Delete')) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteActiveOrLastCartItem();
+        return;
+      }
+
+      // Ctrl + F10: حفظ الفاتورة وإتمام البيع والطباعة
+      if (e.ctrlKey && e.key === 'F10') {
+        e.preventDefault();
+        e.stopPropagation();
+        checkoutPOS();
+        return;
+      }
+    }, true);
   }
 
   function renderPOSCart() {
@@ -3905,12 +4211,12 @@
 
     if (!tbody) return;
 
-    if (appState.posCart.length === 0) {
+    if (appState.posCart.length === 0 && !appState.posInlinePending) {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align:center; padding:2.5rem 1rem; color:var(--ab-text-dim);">
             <i class="fa-solid fa-cart-shopping" style="font-size:2rem; display:block; margin-bottom:0.5rem; opacity:0.3;"></i>
-            الفاتورة فارغة.. امسح الباركود أو انقر على صنف من القائمة لإضافته
+            الفاتورة فارغة.. اضغط <kbd style="color:var(--ab-cyan);">F12</kbd> لكتابة كود الصنف أو انقر على صنف من القائمة
           </td>
         </tr>
       `;
@@ -3918,13 +4224,19 @@
       return;
     }
 
-    tbody.innerHTML = appState.posCart.map(item => {
+    // تعيين الصنف النشط الافتراضي لآخر صنف تمت إضافته إن لم يكن محدداً
+    if (!appState.activeCartItemId && appState.posCart.length > 0) {
+      appState.activeCartItemId = appState.posCart[appState.posCart.length - 1].id;
+    }
+
+    let rowsHtml = appState.posCart.map(item => {
       const lineTotal = item.qty * item.salePrice;
+      const isActive = item.id === appState.activeCartItemId;
       return `
-        <tr>
+        <tr class="${isActive ? 'is-active-row' : ''}" data-cart-row-id="${item.id}" title="انقر لتحديد الصنف واستخدام الاختصارات">
           <td>
             <div style="font-weight:700; font-size:0.84rem; color:var(--ab-text-main);">${escapeHtml(item.name)}</div>
-            <code class="cell-code text-ltr" style="font-size:0.7rem; color:var(--ab-text-dim);">${escapeHtml(item.code)}</code>
+            <code class="cell-code text-ltr" style="font-size:0.75rem; color:var(--ab-cyan); font-weight:800;">#${escapeHtml(item.code)}</code>
           </td>
           <td style="text-align:center; font-family:var(--font-latin); font-weight:700; color:var(--ab-cyan);">
             ${item.salePrice.toFixed(2)}
@@ -3940,13 +4252,61 @@
             ${lineTotal.toFixed(2)}
           </td>
           <td style="text-align:center;">
-            <button type="button" class="btn-cell-tool del" data-cart-action="del" data-id="${item.id}" title="حذف الصنف">
+            <button type="button" class="btn-cell-tool del" data-cart-action="del" data-id="${item.id}" title="حذف الصنف (Ctrl + Del)">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </td>
         </tr>
       `;
     }).join('');
+
+    // سطر إضافة كود جديد تفاعلي (F12)
+    if (appState.posInlinePending) {
+      rowsHtml += `
+        <tr class="pos-inline-row is-active-row" style="background:rgba(56, 189, 248, 0.09); border:1.5px dashed var(--ab-cyan);">
+          <td colspan="2">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="font-weight:800; color:var(--ab-cyan); font-size:0.8rem; white-space:nowrap;"><i class="fa-solid fa-barcode"></i> كود الصنف:</span>
+              <input type="number" id="posInlineCodeInput" class="pos-cart-inline-code" min="1" step="1" placeholder="اكتب كود الصنف (1، 2، ...) واضغط Enter" autofocus style="width:100%;" />
+            </div>
+          </td>
+          <td colspan="3" style="font-size:0.75rem; color:var(--ab-text-dim); vertical-align:middle; text-align:left;">
+            اضغط Enter للإضافة، أو Esc للإلغاء
+          </td>
+        </tr>
+      `;
+    }
+
+    tbody.innerHTML = rowsHtml;
+
+    // ربط إدخال الكود في السطر الجديد
+    const inlineInp = document.getElementById('posInlineCodeInput');
+    if (inlineInp) {
+      inlineInp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const codeVal = inlineInp.value.trim();
+          if (!codeVal) return;
+
+          let match = (appState.products || []).find(p => String(p.code).trim() === codeVal);
+          if (!match) {
+            match = (appState.products || []).find(p => String(p.code).trim().toLowerCase() === codeVal.toLowerCase());
+          }
+
+          if (match) {
+            appState.posInlinePending = false;
+            addToCart(match);
+          } else {
+            alert(`⚠️ لا يوجد صنف مسجل في المخزن بالكود رقم (${codeVal})!\nتأكد من رقم الكود أو أضف الصنف عبر كارت المخزن أو فاتورة مشتريات.`);
+            inlineInp.select();
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          appState.posInlinePending = false;
+          renderPOSCart();
+        }
+      });
+    }
 
     recalcPOSCartTotals();
   }
@@ -4430,7 +4790,261 @@
   }
 
   // ==========================================================================
-  // 26. تحديث كافة عناصر الواجهة (Render All)
+  // 26. إدارة الموردين وفواتيرهم وأرصدتهم (Suppliers Engine)
+  // ==========================================================================
+  function setupSuppliersManagement() {
+    const openBtn = document.getElementById('openSuppliersModalBtn');
+    const menuBtn = document.getElementById('menuSuppliers');
+    const form = document.getElementById('supplierForm');
+    const searchInp = document.getElementById('suppliersSearchInput');
+    const cancelEditBtn = document.getElementById('cancelEditSupplierBtn');
+    const tbody = document.getElementById('suppliersTableBody');
+
+    function openSuppliers() {
+      resetSupplierForm();
+      renderSuppliersTable();
+      openModal('suppliersModal');
+    }
+
+    if (openBtn) openBtn.addEventListener('click', openSuppliers);
+    if (menuBtn) menuBtn.addEventListener('click', openSuppliers);
+
+    if (searchInp) {
+      searchInp.addEventListener('input', () => {
+        renderSuppliersTable(searchInp.value.trim().toLowerCase());
+      });
+    }
+
+    function resetSupplierForm() {
+      if (form) form.reset();
+      const editIdInp = document.getElementById('editSupplierId');
+      if (editIdInp) editIdInp.value = '';
+      const title = document.getElementById('supplierFormTitle');
+      if (title) title.innerHTML = '<i class="fa-solid fa-user-plus"></i> تسجيل مورد جديد تشتري منه:';
+      const submitBtn = document.getElementById('saveSupplierSubmitBtn');
+      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> حفظ المورد';
+      if (cancelEditBtn) cancelEditBtn.style.display = 'none';
+    }
+
+    if (cancelEditBtn) {
+      cancelEditBtn.addEventListener('click', resetSupplierForm);
+    }
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('editSupplierId').value;
+        const name = document.getElementById('supplierNameInput').value.trim();
+        const contactPerson = document.getElementById('supplierContactPersonInput').value.trim();
+        const phone = document.getElementById('supplierPhoneInput').value.trim();
+        const address = document.getElementById('supplierAddressInput').value.trim();
+        const category = document.getElementById('supplierCategoryInput').value.trim();
+        const openingBalance = parseFloat(document.getElementById('supplierOpeningBalanceInput').value) || 0;
+        const balanceType = document.getElementById('supplierBalanceTypeSelect').value;
+        const notes = document.getElementById('supplierNotesInput').value.trim();
+
+        if (editId) {
+          const sup = (appState.companies || []).find(c => c.id === editId);
+          if (sup) {
+            sup.name = name;
+            sup.arName = name;
+            sup.persons = contactPerson ? [contactPerson] : (sup.persons || ['مندوب المورد']);
+            sup.phone = phone;
+            sup.address = address;
+            sup.category = category;
+            sup.openingBalance = openingBalance;
+            sup.balanceType = balanceType;
+            sup.notes = notes;
+            sup.updatedAt = new Date().toISOString();
+            if (window.newTechDB) await window.newTechDB.saveCompany(sup);
+            showToast(`✅ تم تحديث بيانات المورد (${name}) بنجاح!`);
+          }
+        } else {
+          const newSup = {
+            id: 'sup_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            name,
+            arName: name,
+            entityType: 'supplier',
+            persons: contactPerson ? [contactPerson] : ['مندوب التوريد'],
+            phone,
+            address,
+            category,
+            openingBalance,
+            balanceType,
+            notes,
+            createdAt: new Date().toISOString()
+          };
+          appState.companies.push(newSup);
+          if (window.newTechDB) await window.newTechDB.saveCompany(newSup);
+          showToast(`🚚 تمت إضافة المورد (${name}) بنجاح!`);
+        }
+
+        syncLocalStorageCache();
+        resetSupplierForm();
+        renderSuppliersTable();
+        renderSidebarCompanies();
+        populateSupplierDropdown();
+      });
+    }
+
+    if (tbody) {
+      tbody.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-action="edit-supplier"]');
+        const delBtn = e.target.closest('[data-action="del-supplier"]');
+        const invoiceBtn = e.target.closest('[data-action="new-invoice-supplier"]');
+        const stmtBtn = e.target.closest('[data-action="stmt-supplier"]');
+
+        if (editBtn) {
+          const id = editBtn.getAttribute('data-id');
+          const sup = (appState.companies || []).find(c => c.id === id);
+          if (sup) {
+            document.getElementById('editSupplierId').value = sup.id;
+            document.getElementById('supplierNameInput').value = sup.name || sup.arName || '';
+            document.getElementById('supplierContactPersonInput').value = (sup.persons && sup.persons[0]) || '';
+            document.getElementById('supplierPhoneInput').value = sup.phone || '';
+            document.getElementById('supplierAddressInput').value = sup.address || '';
+            document.getElementById('supplierCategoryInput').value = sup.category || '';
+            document.getElementById('supplierOpeningBalanceInput').value = sup.openingBalance || 0;
+            document.getElementById('supplierBalanceTypeSelect').value = sup.balanceType || 'CREDIT';
+            document.getElementById('supplierNotesInput').value = sup.notes || '';
+
+            const title = document.getElementById('supplierFormTitle');
+            if (title) title.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> تعديل بيانات المورد: <span style="color:#fff;">${escapeHtml(sup.name)}</span>`;
+            const submitBtn = document.getElementById('saveSupplierSubmitBtn');
+            if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-save"></i> حفظ التعديلات';
+            if (cancelEditBtn) cancelEditBtn.style.display = 'inline-block';
+            document.getElementById('supplierNameInput').focus();
+          }
+          return;
+        }
+
+        if (delBtn) {
+          const id = delBtn.getAttribute('data-id');
+          const sup = (appState.companies || []).find(c => c.id === id);
+          if (!sup) return;
+          if (confirm(`هل أنت متأكد من حذف المورد (${sup.name})؟`)) {
+            appState.companies = appState.companies.filter(c => c.id !== id);
+            syncLocalStorageCache();
+            if (window.newTechDB && window.newTechDB.deleteCompany) {
+              try { window.newTechDB.deleteCompany(id); } catch(err) {}
+            }
+            renderSuppliersTable();
+            renderSidebarCompanies();
+            populateSupplierDropdown();
+            playSoundDelete();
+            showToast(`🗑️ تم حذف المورد (${sup.name})`);
+          }
+          return;
+        }
+
+        if (invoiceBtn) {
+          const id = invoiceBtn.getAttribute('data-id');
+          closeModal('suppliersModal');
+          const compSel = document.getElementById('purchaseSupplierSelect');
+          if (compSel) compSel.value = id;
+          openModal('newPurchaseModal');
+          return;
+        }
+
+        if (stmtBtn) {
+          const id = stmtBtn.getAttribute('data-id');
+          closeModal('suppliersModal');
+          const stmtCompSel = document.getElementById('stmtCompanySelect');
+          if (stmtCompSel) {
+            stmtCompSel.value = id;
+            stmtCompSel.dispatchEvent(new Event('change'));
+          }
+          openModal('statementModal');
+          return;
+        }
+      });
+    }
+  }
+
+  function renderSuppliersTable(query = '') {
+    const tbody = document.getElementById('suppliersTableBody');
+    const badge = document.getElementById('suppliersCountBadge');
+    if (!tbody) return;
+
+    let suppliers = (appState.companies || []).filter(c => 
+      c.entityType === 'supplier' || c.entityType === 'both' || !c.entityType
+    );
+
+    if (query) {
+      suppliers = suppliers.filter(s =>
+        (s.name || '').toLowerCase().includes(query) ||
+        (s.arName || '').toLowerCase().includes(query) ||
+        ((s.persons && s.persons[0]) || '').toLowerCase().includes(query) ||
+        (s.phone || '').toLowerCase().includes(query) ||
+        (s.category || '').toLowerCase().includes(query)
+      );
+    }
+
+    if (badge) badge.textContent = suppliers.length;
+
+    if (suppliers.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--ab-text-dim);">لا يوجد موردين مطابقين للبحث. يمكنك تسجيل مورد جديد عبر النموذج أعلاه.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = suppliers.map(s => {
+      const invoices = (appState.purchases || []).filter(inv => inv.companyId === s.id || inv.companyName === s.name);
+      const invCount = invoices.length;
+      let totalInvoiced = invoices.reduce((sum, inv) => sum + (parseFloat(inv.grandTotal) || 0), 0);
+      let totalPaid = invoices.reduce((sum, inv) => sum + (parseFloat(inv.paidAmount) || 0), 0);
+      let opening = (parseFloat(s.openingBalance) || 0) * (s.balanceType === 'DEBIT' ? -1 : 1);
+      let netBalance = (totalInvoiced - totalPaid) + opening;
+
+      let balanceLabel = '';
+      if (netBalance > 0) {
+        balanceLabel = `<span style="color:#ef4444; font-weight:800; font-family:var(--font-latin);">${netBalance.toFixed(2)} ج.م (له علينا)</span>`;
+      } else if (netBalance < 0) {
+        balanceLabel = `<span style="color:#10b981; font-weight:800; font-family:var(--font-latin);">${Math.abs(netBalance).toFixed(2)} ج.م (لنا عنده)</span>`;
+      } else {
+        balanceLabel = `<span style="color:var(--ab-text-dim);">خالص (0.00)</span>`;
+      }
+
+      const repName = (s.persons && s.persons[0]) || '-';
+      const phoneStr = s.phone ? `<a href="tel:${s.phone}" style="color:var(--ab-cyan); font-family:var(--font-latin); font-weight:700;">${escapeHtml(s.phone)}</a>` : '-';
+      const actStr = (s.category ? `<span class="card-cat-badge" style="font-size:0.7rem; padding:0.1rem 0.4rem; display:inline-block; margin-bottom:0.2rem;">${escapeHtml(s.category)}</span> ` : '') + (s.address ? `<small style="color:var(--ab-text-dim); display:block;">${escapeHtml(s.address)}</small>` : '');
+
+      return `
+        <tr>
+          <td>
+            <strong style="color:#fff; font-size:0.9rem;">${escapeHtml(s.name || s.arName)}</strong>
+            ${s.notes ? `<small style="color:var(--ab-text-dim); display:block; font-size:0.72rem;">${escapeHtml(s.notes)}</small>` : ''}
+          </td>
+          <td>${escapeHtml(repName)}</td>
+          <td>${phoneStr}</td>
+          <td>${actStr || '-'}</td>
+          <td style="text-align:center;">
+            <span style="font-family:var(--font-latin); font-weight:800; color:var(--ab-cyan);">${invCount}</span>
+            <small style="display:block; font-size:0.7rem; color:var(--ab-text-dim);">${totalInvoiced.toFixed(0)} ج.م</small>
+          </td>
+          <td>${balanceLabel}</td>
+          <td style="text-align:center;">
+            <div style="display:flex; justify-content:center; gap:0.25rem;">
+              <button type="button" class="btn-cell-tool" data-action="new-invoice-supplier" data-id="${s.id}" title="إنشاء فاتورة شراء جديدة من هذا المورد">
+                <i class="fa-solid fa-cart-plus" style="color:var(--ab-cyan);"></i>
+              </button>
+              <button type="button" class="btn-cell-tool" data-action="stmt-supplier" data-id="${s.id}" title="كشف حساب المورد">
+                <i class="fa-solid fa-file-invoice" style="color:#f59e0b;"></i>
+              </button>
+              <button type="button" class="btn-cell-tool" data-action="edit-supplier" data-id="${s.id}" title="تعديل بيانات المورد">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button type="button" class="btn-cell-tool del" data-action="del-supplier" data-id="${s.id}" title="حذف المورد">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ==========================================================================
+  // 27. تحديث كافة عناصر الواجهة (Render All)
   // ==========================================================================
   function renderAll() {
     renderStructuredTableRows();
@@ -4442,10 +5056,11 @@
     renderPOSCatalog();
     renderPOSCart();
     renderDrawerPayoutsTable();
+    renderSuppliersTable();
   }
 
   // ==========================================================================
-  // 27. تهيئة التطبيق عند فتح الصفحة (DOM Ready)
+  // 28. تهيئة التطبيق عند فتح الصفحة (DOM Ready)
   // ==========================================================================
   document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -4462,6 +5077,7 @@
       setupNettingModal();
       setupStatementModal();
       setupCompaniesManagement();
+      setupSuppliersManagement();
       setupDatabaseControls();
       setupActions();
       setupVouchers();
@@ -4470,6 +5086,7 @@
       setupProductsInventory();
       setupViewSwitcher();
       setupPOS();
+      setupPOSKeyboardShortcuts();
       setupDrawerPayouts();
       setupStocktaking();
       setupSalesHistory();

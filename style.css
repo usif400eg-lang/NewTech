@@ -2510,6 +2510,91 @@ html {
   border-color: var(--ab-unpaid);
 }
 
+/* ==========================================================================
+   شريط اختصارات الكيبورد لشاشة البيع (POS Keyboard Shortcuts Bar)
+   ========================================================================== */
+.pos-shortcuts-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: rgba(13, 17, 23, 0.95);
+  border: 1px solid var(--ab-border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.65rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.pos-shortcut-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--ab-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.pos-shortcut-badge:hover {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: var(--ab-cyan);
+}
+
+.pos-shortcut-badge.highlight {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #10b981;
+}
+
+.pos-shortcut-badge kbd {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #334155;
+  border-bottom: 2px solid #0284c7;
+  color: #38bdf8;
+  font-family: var(--font-latin);
+  font-weight: 800;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.pos-shortcut-badge.highlight kbd {
+  border-bottom-color: #10b981;
+  color: #34d399;
+}
+
+/* تمييز الصف النشط في سلة البيع */
+.pos-cart-table tbody tr.is-active-row {
+  background: rgba(56, 189, 248, 0.1) !important;
+  outline: 1.5px solid rgba(56, 189, 248, 0.6);
+  box-shadow: inset 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+.pos-cart-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pos-cart-inline-code {
+  background: #090a10 !important;
+  border: 1.5px solid var(--ab-cyan) !important;
+  color: #38bdf8 !important;
+  font-family: var(--font-latin) !important;
+  font-weight: 800 !important;
+  font-size: 0.95rem !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
+  text-align: center;
+}
+
 /* Print Styles for Receipts and Stocktaking Sheets */
 @media print {
   body * {
